@@ -1,0 +1,54 @@
+翻译任务计划：Luo 等 - 2025 - Physics-informed neural networks for PDE problems a comprehensive review
+
+目标：将论文逐字逐句翻译成中文，保持专业术语一致性，保留特定缩写（如 PINN）。
+输出格式：LaTeX 项目，编译为 PDF。
+
+术语表 (Glossary):
+
+1.  **Physics-informed neural networks (PINNs)**: 物理信息神经网络 (PINN)
+2.  **Partial differential equations (PDEs)**: 偏微分方程 (PDE)
+3.  **Ordinary differential equation (ODE)**: 常微分方程 (ODE)
+4.  **Deep learning**: 深度学习
+5.  **Scientific computing**: 科学计算
+6.  **Artificial Intelligence (AI)**: 人工智能
+7.  **Mesh-free**: 无网格
+8.  **Automatic differentiation**: 自动微分
+9.  **Loss function**: 损失函数
+    *   **Residual loss**: 残差损失
+    *   **Boundary condition loss**: 边界条件损失
+    *   **Initial condition loss**: 初始条件损失
+10. **Collocation points / Residual points**: 配点 / 残差点
+11. **Forward problem**: 正问题
+12. **Inverse problem**: 反问题
+13. **Ill-posed**: 适定性不佳 / 病态
+14. **Regularization**: 正则化
+15. **Hyperparameters**: 超参数
+16. **Optimization**: 优化
+17. **Gradient descent**: 梯度下降
+18. **Convergence**: 收敛
+19. **Epoch**: 轮数 / Epoch
+20. **Multi-layer perceptron (MLP)**: 多层感知机 (MLP)
+21. **Convolutional neural networks (CNN)**: 卷积神经网络 (CNN)
+22. **Recurrent neural networks (RNN)**: 循环神经网络 (RNN)
+23. **Generative adversarial networks (GAN)**: 生成对抗网络 (GAN)
+24. **Kolmogorov–Arnold Networks (KAN)**: Kolmogorov-Arnold 网络 (KAN)
+25. **Transformer**: Transformer
+26. **Domain Decomposition**: 区域分解
+27. **Hard/Soft constraints**: 硬/软约束
+28. **Navier-Stokes equations**: Navier-Stokes 方程
+29. **High-dimensional**: 高维
+30. **Operator learning**: 算子学习
+
+文件拆分计划 (LaTeX 结构):
+- main.tex: 主文件
+- abstract.tex: 摘要
+- sec_1_introduction.tex: 引言 (Section 1) & PINN 基础 (Section 1.1)
+- sec_2_methodologies_arch.tex: PINN 求解器 - 架构 (Section 2.1)
+- sec_2_methodologies_opt.tex: PINN 求解器 - 采样、损失函数、特征嵌入 (Section 2.2 - 2.4)
+- sec_3_applications.tex: 应用 (Section 3)
+- sec_4_5_6_others.tex: 软件、挑战与展望、结论 (Section 4, 5, 6)
+
+执行步骤：
+1. 创建 LaTeX 项目结构。
+2. 依次翻译各章节并写入对应的 .tex 文件。
+3. 编译并检查输出。

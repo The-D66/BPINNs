@@ -36,7 +36,7 @@ class Param:
         self.pde     = data_config.pde
         self.physics = data_config.physics
         self.folder_name = data_config.name
-        # set all useful parameters from physical domain and dimension
+        print(f"DEBUG: Param.folder_name set to: {self.folder_name}") # Added debug print
         self.phys_dim = Dimension(data_config, True)
         self.comp_dim = Dimension(data_config, False)
         self.inverse  = "inverse" if data_config.inv_flag else "direct"
@@ -44,6 +44,7 @@ class Param:
 
     def __string_to_bool(self, s):
         """ Convert string "True","False" to boolean True and False """
+        if isinstance(s, bool): return s
         if   s=="False" or s=="false": return False
         elif s=="True"  or s=="true" : return True
         else: raise Exception("No boolean string!")

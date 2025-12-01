@@ -1,0 +1,54 @@
+\section{阶段四：频谱陷阱}
+\begin{frame}
+    \frametitle{阶段四：工况设置}
+    \textbf{设置}: 仅在内部观测数据添加噪声，模拟模型理论边界+实测误差对模型的影响。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.8\textheight, keepaspectratio]{images/noisy_solution_masked.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段四：频谱陷阱 - 水深 (h)}
+    结果过于平滑，丢失波峰。上游流量边界在(x=0m,t=3600s)时流量的一阶导数不连续，网络未能捕捉到该变化。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_int_h.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段四：频谱陷阱 - 流速 (u)}
+    流速同样平滑化，未能捕捉锐利变化。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_int_u.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段四：系统性偏差分析}
+    低频偏差 (Spectral Bias) 导致结构性误差。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_int_err.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段四：时序分析 (水深 h)}
+    预测均值 (蓝虚线) 明显偏离真值。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_int_ts.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段四：时序分析 (流量 Q)}
+    波前捕捉失败。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_int_ts_q.png}
+    \end{figure}
+\end{frame}

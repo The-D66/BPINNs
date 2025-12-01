@@ -1,0 +1,121 @@
+\section{阶段五：最终方案}
+
+\begin{frame}
+    \frametitle{改进一：人工粘性 (Artificial Viscosity)}
+    \begin{columns}
+        \begin{column}{0.6\textwidth}
+            \begin{block}{控制方程修正}
+                \Large
+                \[ \frac{\partial \mathbf{U}}{\partial t} + \frac{\partial \mathbf{F}}{\partial x} = \mathbf{S} + {\color{red} \nu \frac{\partial^2 \mathbf{U}}{\partial x^2}} \]
+            \end{block}
+
+            \vspace{0.5cm}
+            \textbf{为何引入？}
+            \begin{itemize}
+                \item \textbf{物理层}: 模拟流体微团内摩擦，\textbf{抹平激波间断}。
+                \item \textbf{优化层}: 平滑 Loss Landscape，防止 \textbf{HMC 采样发散}。
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.4\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=\textwidth]{images/res_noisy_ts.png}
+                \caption{目标：消除此类数值震荡}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{改进二：傅里叶特征嵌入 (Fourier Features)}
+    \begin{columns}
+        \begin{column}{0.6\textwidth}
+            \begin{block}{坐标映射 (放大变化)}
+                \Large
+                \[ \gamma(\mathbf{x}) = \left[ \begin{array}{c} \cos(2\pi \mathbf{B}\mathbf{x}) \\ \sin(2\pi \mathbf{B}\mathbf{x}) \end{array} \right] \]
+                \normalsize
+                \[ \mathbf{B} \sim \mathcal{N}(0, \sigma^2) \]
+            \end{block}
+
+            \textbf{核心机制}
+            \begin{itemize}
+                \item \textbf{问题}: 神经网络$\tanh$具有低通滤波器的特性，导致神经网络出现了\textbf{谱偏置}问题 ，偏爱低频信息。
+                \item \textbf{对策}: 映射至高维频率空间，强迫网络关注高频细节。
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.4\textwidth}
+            \begin{figure}
+                \centering
+                \adjincludegraphics[width=\textwidth, trim={0.45\width} 0 0 0, clip]{images/res_int_h.png}
+                \caption{目标：修正过度平滑 (丢失波前)}
+            \end{figure}
+        \end{column}    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段五结果：精准预测 - 水深 (h)}
+    完美重建流场，伪影消失，强噪声鲁棒性。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_final_h.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段五结果：精准预测 - 流速 (u)}
+    流速场恢复清晰，细节保留完整。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_final_u.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段五结果：全域误差分析}
+    全域误差显著降低，无明显结构性偏差。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_final_err.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段五结果：训练收敛性 (Loss)}
+    Loss 曲线平稳下降，无过拟合或震荡迹象。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_final_loss.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段五：不确定性量化 (水深 h)}
+    \textbf{95\% CI}: 蓝色阴影覆盖良好，不确定性随时间合理扩散。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_final_ts.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段五：不确定性量化 (流量 Q)}
+    准确捕捉流量减半动态，物理守恒性得到保持。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_final_ts_q.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{总结}
+    \begin{itemize}
+        \item \textbf{当前结论}：BPINN 可以通过人工粘性、傅里叶特征嵌入等技术，有效应对噪声和频谱偏置问题，实现对含噪声简单流场的预测。\\
+        \item \textbf{存在问题}: 对于复杂流场（如渐变段、多段渠道联合），当前方法的可行性未经验证。\\
+        \item \textbf{存在问题}: 目前的实现还是对流场的复现，也即$f(x,t) = [u,h]$，但我们事实上希望的是一个预测模型，即$f(x,t|BC,IC) = [u,h]$，这需要进一步的研究工作。
+    \end{itemize}
+    \vspace{1cm}
+    \centering
+    \Huge 谢谢聆听！
+\end{frame}

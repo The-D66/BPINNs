@@ -24,12 +24,24 @@ class CoreNN():
         self.n_layers   = par.architecture["n_layers"]
         self.n_neurons  = par.architecture["n_neurons"]
         self.activation = par.architecture["activation"]
-        self.stddev     = tf.math.sqrt(50/self.n_neurons)
+        
+        # Fourier Feature Embedding
+        self.fourier_scale = par.architecture.get("fourier_scale", 0.0)
+        self.fourier_dim   = par.architecture.get("fourier_dim", 20)
+        self.use_fourier   = self.fourier_scale > 0
+        
+        # Prior standard deviation (regularization strength)
+        # Default He-like initialization scaling if not provided
+        if "weight_std" in par.uncertainty:
+            self.stddev = par.uncertainty["weight_std"]
+        else:
+            self.stddev = tf.math.sqrt(50.0/self.n_neurons)
         
         # Build the Neural network architecture
         self.model = self.__build_NN(par.utils["random_seed"])
         self.dim_theta = self.nn_params.size()
 
+    # ... properties unchanged ...
     @property
     def nn_params(self):
         """ Getter for nn_params property """
@@ -55,9 +67,19 @@ class CoreNN():
         """
         # Set random seed for inizialization
         tf.random.set_seed(seed)
+        
+        # Determine Input Shape
+        if self.use_fourier:
+            # Fourier features: [sin(Bx), cos(Bx)] -> 2 * fourier_dim
+            input_dim = 2 * self.fourier_dim
+            # Initialize B matrix (Gaussian sampling)
+            self.B = tf.random.normal(shape=(self.n_inputs, self.fourier_dim), stddev=self.fourier_scale, dtype=tf.float32)
+        else:
+            input_dim = self.n_inputs
+            
         # Input Layer
         model = tf.keras.Sequential()
-        model.add(tf.keras.Input(shape=(self.n_inputs,)))
+        model.add(tf.keras.Input(shape=(input_dim,)))
         # Hidden Layers
         for _ in range(self.n_layers):
             initializer = tf.keras.initializers.RandomNormal(mean=0., stddev=self.stddev)
@@ -81,5 +103,14 @@ class CoreNN():
         inputs : np array  (n_samples, n_input)
         output : tf tensor (n_samples, n_out_sol+n_out_par)
         """
-        x = tf.convert_to_tensor(inputs)
+        x = tf.convert_to_tensor(inputs, dtype=tf.float32)
+        
+        if self.use_fourier:
+            # Apply Fourier Mapping
+            # x: (N, n_inputs), B: (n_inputs, fourier_dim)
+            # projection: (N, fourier_dim)
+            projection = tf.matmul(x, self.B) * 2.0 * 3.1415926535
+            # features: (N, 2 * fourier_dim)
+            x = tf.concat([tf.sin(projection), tf.cos(projection)], axis=1)
+            
         return self.model(x)

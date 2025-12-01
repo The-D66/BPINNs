@@ -1,0 +1,30 @@
+\section{阶段一：原理验证}
+
+\begin{frame}
+    \frametitle{阶段一：Demo 预测结果 - 水深 (h)}
+    \textbf{小规模验证}: 矩形渠道平底，长20m，模拟32s，边界条件不变\\
+    FDM(左) vs PINN (右)
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/demo_h.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段一：Demo 预测结果 - 流速 (u)}
+    \textbf{小规模验证}: 流速场捕捉准确。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/demo_u.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段一：Demo 误差分析}
+    误差分布均匀且量级极低，水深$h$误差约为5.21e-3\ m，流速$u$误差约为3.53e-2\ m/s。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/demo_err.png}
+    \end{figure}
+\end{frame}
+

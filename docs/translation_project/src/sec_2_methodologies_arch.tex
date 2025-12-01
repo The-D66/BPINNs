@@ -1,0 +1,228 @@
+\section{用于 PDE 问题的 PINN 求解器}
+
+早在 20 世纪，一些研究人员就开始探索应用机器学习方法来求解偏微分方程。其概念是利用神经网络强大的近似能力，使用时间和空间位置作为输入。通过网络的映射，最终可以获得 PDE 的解。1994 年，Dissanayake 和 Phan-Thien (1994) 是采用基于神经网络的方法求解 PDE 的先驱。他们利用神经网络的“通用近似器”特性，通过配点法将求解 PDE 的数值问题转化为无约束最小化问题。
+
+随后，Lagaris 等人 (1998) 引入了一种人工神经网络模型，用于求解具有各种边界条件的 PDE。这种方法在解的准确性、泛化能力和所需参数数量方面显示出巨大的潜力。Monterola 和 Saloma (2003) 引入了一种基于无监督神经网络的方法来求解非线性薛定谔方程，并提供了误差的上限估计。Aarts 和 van der Veer (2001) 开发了具有特定结构的神经网络，该结构整合了 PDE 的知识及其边界和初始条件，同时训练多个神经网络。
+
+然而，这些早期方法受到神经网络结构和算法限制的制约，这极大地阻碍了它们处理更复杂问题的能力。
+
+近年来，随着人工智能技术的快速发展，GPU 和 TPU 等高性能计算硬件的出现，以及 TensorFlow (Abadi 等 2016) 和 PyTorch (Paszke 等 2019) 等深度学习框架的推出和不断改进，深度学习在求解 PDE 中的应用取得了进一步的进展。2019 年，Raissi 等人 (2019) 提出了 PINN 模型，开创了使用神经网络求解 PDE 的新范式。通过将 PDE 及其初始和边界条件整合到神经网络的损失函数中，并使用自动微分和反向传播来指导训练过程，该模型可以在统一的框架内无缝地结合基于物理的约束和观测数据。
+
+图 3 展示了基于神经网络求解 PDE 方法的时间线。它清晰简洁地直观展示了这些方法的演变，强调了神经网络现在在现代 PDE 求解方法中发挥的核心和变革性作用。时间线突出了神经网络的逐步整合，展示了它们在解决 PDE 复杂性方面日益增长的影响力和有效性（表 2）。
+
+\begin{table}[htbp]
+\centering
+\caption{PDE 问题的 PINN 求解器概述}
+\label{tab:overview}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lll}
+\hline
+方法 & & 代表性工作 \\
+\hline
+PINN 的架构 & MLP & vanilla PINN (Raissi et al. 2019; He et al. 2020) \\
+ & CNN & PhyGeoNet (Gao et al. 2021; Fang 2022), \\
+ & & Spline-PINN (Wandel et al. 2022), PICNN (Lei et al. 2023), \\
+ & & f-PICNN (Yuan et al. 2024) \\
+ & RNN & PhyCRNet (Ren et al. 2022; Mavi et al. 2023) \\
+ & GAN & PI-GANs (Yang et al. 2020; Gao and Ng 2022) \\
+ & KAN & Wang et al. (2024c), Shukla et al. (2024), Rigas et al. (2024) \\
+ & Transformer & PIT (Santos et al. 2023), PINNsFormer (Zhao et al. 2024), \\
+ & & Transolver (Wu et al. 2024) \\
+ & PINN 的其他架构 & NAS-PINN (Wang and Zhong 2024), SPINN (Cho et al. 2022), \\
+ & & sparabreak PirateNets (Wang et al. 2024b) \\
+\hline
+区域分解 & & XPINNs (Karniadakis and Em 2020), cPINNs (Jagtap et al. 2020a), \\
+ & & (Wu et al. 2022) \\
+\hline
+PINN 的激活函数 & & Jagtap et al. (2020b), PIKFNNs (Fu et al. 2024), \\
+ & & PAFs (Abbasi and Andersen 2024; Zeng et al. 2022) \\
+\hline
+自适应数据重采样 & & RAR (Lu et al. 2021b; Nabian et al. 2021), \\
+ & & RAR-D (Wu et al. 2023), R3 sampling (Daw et al. 2023) \\
+ & & DAS-PINNs (Tang et al. 2023), DMIS (Yang et al. 2023), \\
+ & & GAS (Jiao et al. 2024) \\
+ & & PINNACLE (Lau et al. 2024), AAS (Tang et al. 2024) \\
+\hline
+PINN 的损失函数 & 损失重加权 & Wang et al. (2021c, 2022a), lbPINNs (Xiang et al. 2022) \\
+ & & SelectNet (Gu et al. 2021), SA-PINNs (McClenny and Braga-Neto 2023), \\
+ & & LA-PINN (Song et al. 2024) \\
+ & 新型损失函数 & gPINNs (Yu et al. 2022; Wang et al. 2022b, 2024a,d) \\
+\hline
+特征嵌入和增强 & & Wang et al. (2021a), Li et al. (2024a, 2024c) \\
+ & & PD-PINN (Peng et al. 2020), sf-PINN (Wong et al. 2024), \\
+ & & DaPINN (Guan et al. 2023) \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+\subsection{PINN 的架构}
+
+各种为应对特定挑战而量身定制的架构已在 PINN 中涌现。这些不同的 PINN 架构代表了传统神经网络结构的创新改编，专门设计用于增强求解 PDE 问题的性能。本节探讨并比较了各种 PINN 架构，重点介绍了它们独特的设计原则、计算效率以及在不同领域的适用性。PINN 涵盖的主要架构主要包括多层感知机（MLP）（Hornik 等 1989）、卷积神经网络（CNN）（Krizhevsky 等 2012；Gu 等 2018）、循环神经网络（RNN）（Giles 等 1994；Schuster 和 Paliwal 1997），以及其他如生成对抗网络（GAN）（Goodfellow 等 2014）、Transformer（Vaswani 等 2017）。
+
+\subsubsection{多层感知机 (MLP)}
+
+多层感知机（MLP）（Hornik 等 1989）是人工神经网络中的一种基础架构，由相互连接的神经元层组成，可以通过迭代调整权重和使用激活函数来近似复杂的非线性函数。其理论基础的核心是通用近似定理（Cybenko 1989；Chen 和 Chen 1995），该定理指出，具有适当激活函数和有限数量神经元的单隐层 MLP 可以近似任何连续函数。MLP 的输入由表示输入特征的向量 $x$ 组成（图 4）。
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.6\textwidth]{images/Fig_4.png}
+\caption{MLP 的框架}
+\end{figure}
+
+$x$ 的每个元素对应于输入数据的一个特征。对于每个隐藏层 $l$，其中 $l = 1, 2, 	ext{dots}, L$，计算：
+\begin{equation}
+\begin{aligned}
+z^{(l)} &= W^{(l)} a^{(l-1)} + b^{(l)}, \\
+a^{(l)} &= \sigma^{(l)}(z^{(l)}),
+\end{aligned}
+\end{equation}
+其中权重矩阵 $W$ 和偏置向量 $b$ 是参数，$\sigma()$ 是非线性激活函数。输出层计算最终的预测向量，
+\begin{equation}
+y = W^{(L+1)} a^{(L)} + b^{(L+1)}.
+\end{equation}
+全连接前馈网络（FNN）架构（也称为 MLP）的特征，例如层数和每层神经元数，通常是针对不同的 PDE 问题根据经验确定的。在 vanilla PINN（Raissi 等 2019）中，使用了不同类型的 FNN，例如，用于薛定谔方程的每层 100 个神经元的 5 层 FNN，用于 Allen–Cahn 方程的每层 200 个神经元的 4 层 FNN。在 He 等 (2020) 中，研究了神经网络大小对预测精度的影响。这表明，为 PINN 使用过小或过大的尺寸会导致性能下降。由于 PINN 的黑盒性质，关于神经网络大小如何影响各种问题的性能的理论分析仍未得到探索。解决这个问题至关重要但也具有挑战性。
+
+\subsubsection{卷积神经网络 (CNN)}
+
+卷积神经网络（CNN）（Li 等 2022）是一种专门设计用于处理具有网格状拓扑结构的数据（特别是图像数据）的深度学习模型。CNN 的核心在于使用卷积层和池化层来提取和压缩特征，使其在图像分类、目标检测和图像分割等任务中非常有效。卷积层通过卷积操作（即应用一组可学习的滤波器）提取局部特征，而池化层通过下采样操作减少特征图的空间维度，从而降低计算复杂度并防止过拟合。CNN 的成功很大程度上归功于它们自动学习图像中分层特征的能力，从低级特征（如边缘）到高级特征（如物体部分）。
+
+卷积操作涉及在输入数据上滑动可学习的滤波器（或卷积核），并计算滤波器与输入数据之间的点积，描述如下：
+\begin{equation}
+M = (I * K)(i, j) = \sum_{m} \sum_{n} I(i+m, j+n) \cdot K(m, n)
+\end{equation}
+其中 $I$ 是输入图像，$K$ 是卷积核，$M$ 是输出特征图，$*$ 表示卷积操作。然后池化层减少特征图的空间维度，降低计算复杂度并防止过拟合，
+\begin{equation}
+P(i, j) = \max_{0 \le m < p} \max_{0 \le n < p} M(s \cdot i + m, s \cdot j + n)
+\end{equation}
+其中 $P$ 是池化输出，$M$ 是特征图，$p$ 是池化窗口大小，$s$ 是步长。
+
+许多研究人员探索了将 CNN 架构集成到 PINN 中。Gao 等 (2021) 提出了 PhyGeoNet，这是一种物理信息几何自适应 CNN，用于求解不规则域上的参数化稳态 PDE。它使用椭圆坐标映射将不规则几何形状转换为规则几何形状，从而能够应用标准 CNN 架构。PhyGeoNet 可以在没有标记数据的情况下学习热传导、Navier–Stokes 和泊松方程的解。在 Fang (2022) 中，介绍了一种用于求解 PDE 的高效混合 PINN。它结合了 CNN 和有限体积法的思想，使用局部拟合方法来近似微分算子，而不是自动微分。数值实验验证了其正确性和效率，在计算时间和精度方面均显示出优于传统 PINN 的显著优势。Wandel 等 (2022) 介绍了 Spline-PINN，它使用 Hermite 样条核结合了 PINN 和 CNN 的优点。它实现了适合 CNN 的基于网格的表示的连续插值，允许使用物理信息损失在没有预计算数据的情况下进行训练。Spline-PINN 提供快速、准确且可推广到未见域的解，正如在 Navier-Stokes 和阻尼波动方程中所演示的那样。Lei 等 (2023) 提出了一种专门设计用于求解球面上 PDE 的物理信息 CNN (PICNN)。基于深度学习和球谐函数分析的最新进展，作者建立了 Sobolev 范数中 PICNN 近似误差的严格理论界限。他们开发了一种新颖的定位复杂性分析来证明 PICNN 的快速收敛速度。数值实验突出了 PICNN 在球面域上求解 PDE 的有效性。在 Yuan 等 (2024) 中，设计了一种基于 CNN 的 f-PICNN 用于求解时空域中的 PDE。利用非线性卷积单元堆栈和记忆机制，f-PICNN 可以处理具有非线性、剧烈梯度和多尺度特征的 PDE。该网络是无监督的，不需要标记数据。f-PICNN 的功效在各种基准 PDE 中得到了证明，展示了其准确近似解的能力（图 5）。
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.9\textwidth]{images/Fig_5.png}
+\caption{用于时变 PDE 的 f-PICNN (Yuan 等 2024) 神经网络架构，具有非线性卷积单元 (NCU)}
+\end{figure}
+
+\subsubsection{循环神经网络 (RNN)}
+
+循环神经网络（RNN）（Lipton 等 2015）设计用于处理序列数据，其特点是具有循环连接，可以捕捉数据中的时间依赖性。RNN 跨时间步共享权重并引入隐藏状态，使网络能够记忆和利用过去的信息。这种架构擅长诸如时间序列预测、语言建模和序列标注等任务。RNN 的理论基础包括其递归性质，允许信息通过序列传播。尽管在长序列训练期间面临梯度消失和梯度爆炸等挑战，但 RNN 及其变体 [如 LSTM (Hochreiter 和 Schmidhuber 1997; Yu 等 2019) 和 GRU (Chung 等 2014)] 在解决这些问题方面取得了重大进展。
+
+RNN 的基本结构包括输入层、隐藏层和输出层，隐藏层具有循环连接。这些循环连接允许根据当前输入和上一时间步的隐藏状态更新隐藏状态。隐藏状态更新公式如下：
+\begin{equation}
+h_t = f(W_{xh}x_t + W_{hh}h_{t-1} + b_h),
+\end{equation}
+其中 $h_t$ 是时间步 $t$ 的隐藏状态，$x_t$ 是时间步 $t$ 的输入，$W_{xh}$ 是从输入到隐藏层的权重矩阵，$W_{hh}$ 是从隐藏层到隐藏层的权重矩阵，$b_h$ 是隐藏层的偏置，$f$ 是激活函数，通常是 tanh 或 ReLU。输出计算可以公式化为
+\begin{equation}
+y_t = g(W_{hy}h_t + b_y),
+\end{equation}
+其中 $y_t$ 是时间步 $t$ 的输出，$W_{hy}$ 是从隐藏层到输出层的权重矩阵，$b_y$ 是输出层的偏置，$g$ 是激活函数（图 6）。
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.9\textwidth]{images/Fig_6.png}
+\caption{PhyCRNet (Ren 等 2022) 的框架}
+\end{figure}
+
+Ren 等 (2022) 提出了 PhyCRNet，这是一种新颖的物理信息卷积循环学习架构，旨在无需标记数据即可求解时空 PDE。PhyCRNet 利用编码器-解码器卷积 LSTM 网络进行有效的空间特征提取和时间演化。提出的 PhyCRNet 在各种基准问题上进行了评估，证明了其准确求解 PDE 的能力，并优于现有的 PINN 方法。Mavi 等 (2023) 提出了一种具有非局部相互作用的无监督 CNN-LSTM 架构，用于求解 PDE。该网络利用非局部近场动力学微分算子 (PDDO) 作为卷积滤波器来评估场变量的导数。该架构通过中间带有卷积 LSTM 层的编码器-解码器层在降维潜在空间中捕获时间动态。物理约束在网络的输出和潜在空间中强制执行。基准 PDE 证明了这种新颖架构的训练性能和外推能力。
+
+\subsubsection{生成对抗网络 (GAN)}
+
+GAN 是一类深度生成模型，旨在生成类似于给定真实数据集的新的合成数据样本。该架构由两个神经网络组成：生成器和判别器，它们通过对抗过程同时进行训练。生成器创建数据样本，目的是欺骗判别器使其相信这些样本是真实的，而判别器的目标是区分真实样本和合成样本。这种竞争框架促进了日益逼真的数据的生成（Creswell 等 2018）。
+
+GAN 框架已在一些工作中集成到 PINN 中。Yang 等 (2020) 提出了物理信息 GAN (PI-GANs)，用于基于有限的离散测量值求解正向、反向和混合随机问题。PI-GANs 以随机微分方程 (SDE) 的形式编码物理定律。PI-GANs 使用三个生成器，即使在输入噪声与目标过程的有效维数之间存在不匹配的情况下，也能表现出对随机过程的良好近似。Gao 和 Ng (2022) 考察了一种应用 Wasserstein 生成对抗网络 (WGAN) 量化 PDE 解中不确定性的物理信息方法。该方法在对抗网络的判别器内利用 groupsort 激活函数，采用网络生成器来学习基于初始/边界数据的 PDE 解中存在的不确定性。理论发现表明，在温和条件下，如果样本数量充足，计算出的生成器的泛化误差往往会高概率地趋向于网络的近似误差。数值实验验证了这些理论见解，证明了即使在噪声占主导地位时，所提出的模型也能够检测不确定性并近似精确解。
+
+\subsubsection{Kolmogorov–Arnold 网络 (KAN)}
+
+Kolmogorov–Arnold 网络 (KAN) (Liu 等 2024b) 建立在 Kolmogorov–Arnold 表示定理 (KART) 之上。该定理规定，任何多元连续函数都可以分解为单变量连续函数加上加法运算的有限组合。据此，KAN 将高维函数建模为单变量函数的和。通过包含可学习的边缘激活函数（即权重），KAN 提高了可解释性和准确性。用数学术语来说，对于平滑函数 $f : [0, 1]^n \to \mathbb{R}$，可以写成：
+\begin{equation}
+f(x) = \sum_{q=1}^{2n+1} \Phi_q \left(\sum_{p=1}^{n} \phi_{q,p}(x_p)\right),
+\end{equation}
+其中 $x = (x_1, \dots, x_n)$ 表示输入向量，$\Phi_q$ 和 $\phi_{q,p}$ 表示单变量函数。
+
+相比之下，广泛采用的 MLP 使用通用近似定理 (UAT) 作为其理论基础，通常将激活函数放置在神经元（即节点）处。然后每个神经元接收输入并通过激活函数（如 ReLU、Sigmoid 或 Tanh）产生输出。符号上，MLP 可以表示为：
+\begin{equation}
+\text{MLP}(x) = (W_L \sigma(W_{L-1} \dots \sigma(W_1x + b_1) \dots) + b_L),
+\end{equation}
+其中 $W_l$ 和 $b_l$ 分别是第 $l$ 层的权重矩阵和偏置，$\sigma$ 是激活函数。这种以节点为中心的方案通常被认为是不透明的，因为内部工作原理并不直观易懂。
+
+另一方面，KAN 将其激活函数定位在网络边缘而不是节点上。因此，每个单独的输入通过可学习的单变量映射（例如 B 样条函数），这些输出随后由加法节点组合。一般的 KAN 可以写成：
+\begin{equation}
+\text{KAN}(x) = (\Phi_{L-1} \circ \dots \circ \Phi_1 \circ \Phi_0)(x),
+\end{equation}
+其中 $\Phi_l$ 表示第 $l$ 层的变换。具体来说，
+\begin{equation}
+x_{l+1} = [\phi_{l,1,1}(x_l), \dots, \phi_{l,n_{l+1},n_l}(x_l)],
+\end{equation}
+其中每个 $\phi_{l,j,i}$ 表示第 $l$ 层从节点 $i$ 到节点 $j$ 的单变量激活。这种结构提高了透明度，使研究人员能够观察单变量函数是如何配置的以及数据如何流经网络。
+
+由于 KAN 将高维任务分解为较小的单变量部分，因此非常适合复杂、非线性的 PDE 问题。与传统的 MLP 相比，KAN 允许更清晰地可视化其内部函数组合，从而更容易改进模型的特定部分以获得更好的 PDE 解。此外，KAN 可以从其学习到的表示中推导出符号公式，有助于验证解析 PDE 解。因此，KAN 不仅仅是一个解决问题的框架，还是理论洞察和教育目的的宝贵工具。
+
+最近，一些基于 KAN 的 PINN 架构被提出，显示出巨大的潜力。Wang 等 (2024c) 提出了 Kolmogorov–Arnold 信息神经网络 (KINN)。通过系统的数值实验，证明了 KINN 在求解各种 PDE（包括涉及多尺度、奇异性、应力集中、非线性超弹性和异质属性的 PDE）时，在准确性和收敛速度方面优于基于 MLP 的 PINN。作者还强调了 KINN 在处理复杂几何形状方面的潜力，并提出了未来的研究方向，例如结合有限元方法的网格自适应技术来增强 KINN 的能力。它强调了 KAN 彻底改变 PDE 人工智能的潜力。Shukla 等 (2024) 介绍了 KAN 的修改版本，称为 Chebyshev KAN，并在准确性、效率和鲁棒性方面与传统 MLP 进行了比较。该研究在各种基准测试（包括计算物理中的正向和反向问题）上系统地评估了这些模型。结果表明，虽然基于 B 样条的原始 KAN 在准确性和效率方面表现不佳，但修改后的 Chebyshev KAN 表现出与 MLP 相当的性能，尽管在某些条件下存在潜在的发散问题。该论文通过信息瓶颈理论的视角进一步探讨了这些模型的学习动态，揭示了对其训练过程的见解。在 Rigas 等 (2024) 中，提出了一种物理信息 Kolmogorov-Arnold 网络的自适应训练方案，其中包括基于残差的注意力 (RBA)、配点的自适应重采样以及缓解 KAN 中网格更新相关挑战的自适应状态转换方法等技术。通过对各种 PDE 的比较实验，该研究表明 PIKAN 在准确性和收敛速度方面显著优于传统的基于 MLP 的 PINN，特别是对于涉及多尺度动力学、奇异性和异质材料的问题。
+
+\subsubsection{Transformer}
+
+Transformer (Vaswani 等 2017) 架构代表了 NLP 领域的重大突破，它通过自注意力机制实现了输入序列的并行处理，从而取代了 RNN。这一创新对于有效解决长距离依赖关系至关重要，克服了序列模型固有的计算限制。Transformer 的核心是自注意力模块，它允许序列中的每个位置关注上一层的所有其他位置，从而在单个操作中捕获全局上下文。该模型遵循编码器-解码器结构，利用堆叠的自注意力层和前馈网络。编码器处理输入序列的上下文，而解码器利用此上下文生成输出序列。集成了位置编码以传达有关序列顺序的信息。Transformer 在 BERT、GPT 和 T5 等模型的开发中发挥了关键作用，这些模型在机器翻译、文本摘要和问答等任务中树立了新标准。这些进步突显了 Transformer 架构在重塑现代 NLP 方面的变革性影响。
+
+Santos 等 (2023) 介绍了物理信息 Transformer (PIT) 模型，该模型基于 Transformer 架构用于学习 PDE 的解算子。PIT 利用注意力机制来捕捉初始条件和查询点之间的关系，从而提高模型的泛化能力。它在处理输入域和查询域的离散化时保持不变性，同时通过交叉注意力块实现交互。与已建立的基于物理的 DeepONet (Lu 等 2021a) 相比，PIT 在多个方面显示出显著改进，即使在训练资源有限的情况下也能在高维问题中表现出有效的性能。PIT 还提供了调整每个训练实例的查询和输入样本数量以及离散化输入函数的灵活性——这是 DeepONet 等其他算子学习模型不支持的功能。与 PINN 网络中的算子学习相比，PIT 解决了现有解决方案性能不佳的问题，并消除了对初始和边界条件进行假设的需要。基于 Transformer 的架构包括编码器和解码器。为了减少与 PINN 损失相关的自动划分成本，PIT 避免了对查询和输入点的自注意力。作者还将 PIT 与传统的基于物理的 DeepONet 以及 Wang 等 (2021c) 的改进模型进行了比较。这些模型在一维 Burgers 方程和二维热方程上进行了测试。结果表明，虽然 PIT 的计算成本与 DeepONet 相似，但其求解性能得到了显著提高（图 7）。
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.9\textwidth]{images/Fig_7.png}
+\caption{PINNsFormer (Zhao 等 2024) 的框架}
+\end{figure}
+
+此外，Zhao 等 (2024) 提出了 PINNsFormer，这是一种基于 Transformer 的架构，利用多头注意力机制捕捉时间依赖性，增强了 PDE 解的泛化能力和准确性。PINNsFormer 将逐点输入转换为伪序列，使模型能够学习时间依赖性并更有效地传播初始条件约束。一项关键创新是引入了一种新的激活函数 Wavelet，它预见了深度神经网络中的傅里叶分解，提高了近似能力。该框架还支持各种学习方案，例如神经切线核 (NTK)，以进一步提高性能。实证结果表明，PINNsFormer 在泛化和准确性方面优于传统的 PINN，特别是在传统模型失效的场景中。它在分布外数据和高维 PDE 的预测精度方面表现出显著提高。值得注意的是，PINNsFormer 降低了总损失项，表明优化效率更高。损失景观分析揭示了一个更平滑的景观，局部最小值更少，表明更容易收敛到全局最小值。Wu 等 (2024) 介绍了 Transolver，这是一个旨在高效准确地求解复杂几何形状上的 PDE 的模型。Transolver 利用 Transformer 架构，结合了 PhysicsAttention，这是一种自适应机制，将离散化域分割成可学习的切片。这些切片将具有相似物理状态的网格点分组，使模型能够以线性计算复杂度捕捉复杂的物理相关性。该架构用 PhysicsAttention 取代了标准注意力，处理编码离散化域内相互作用的物理感知 token。对六个基准和大规模工业模拟的广泛实验证实了 Transolver 始终如一的最先进性能，相对增益为 22%。其效率、可扩展性和分布外泛化能力通过严格的测试得到了验证，证明了其在现实世界应用中的潜力，包括天气预报、工业设计和材料分析。
+
+\subsubsection{PINN 的其他架构}
+
+除了上述讨论的神经网络框架外，还开发了各种新颖的 PINN 架构（图 8）。
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.9\textwidth]{images/Fig_8.png}
+\caption{具有神经架构搜索 (NAS-PINN) 的 PINN 框架 (Wang 和 Zhong 2024)}
+\end{figure}
+
+神经架构搜索 (NAS) 已被用于优化 PINN。例如，Wang 等 (2022c) 介绍了 Auto-PINN，这是一种用于优化 PINN 超参数的系统化自动化方法。Auto-PINN 采用神经架构搜索 (NAS) 技术来避免手动或穷举搜索与 PINN 相关的超参数空间。通过使用标准 PDE 基准进行一系列预实验，他们探索了 PINN 中的结构-性能关系。他们发现不同的超参数可以解耦，并且 PINN 的训练损失函数可以作为有效的搜索目标。在 Wang 和 Zhong (2024) 中，提出了一种新颖的框架 NAS-PINN，它也利用 NAS 来优化 PINN 的设计。通过将搜索空间放宽到连续域并利用掩码来实现不同形状的张量加法，NAS-PINN 采用了双层优化过程。内层循环优化神经网络的权重和偏置，而外层循环更新架构参数。这种方法自动化了最佳神经网络架构的选择，提高了 PINN 的效率和准确性。通过广泛的实验，证明了 NAS-PINN 实现了优于手动设计架构的性能，特别是在处理复杂和不规则域时。
+
+此外，Cho 等 (2022) 介绍了可分离 PINN (SPINN)，这是一种旨在减轻求解 PDE 时遇到的维数灾难的创新架构。SPINN 利用前向模式自动微分显着减少计算开销，按轴逐个处理输入而不是逐点处理。这种方法减少了所需的网络前向传递次数，使计算和内存成本随网格分辨率的增长更加缓慢，从而增强了可扩展性。实验结果表明，SPINN 大幅减少了训练运行时间，同时在各种 PDE 系统中实现了与标准 PINN 相当的精度。这一进步使 SPINN 成为高效处理高维 PDE 问题的有希望的解决方案。Wang 等 (2024b) 提出了一种新颖的 PINN 架构 PirateNets，旨在提高训练稳定性和效率。PirateNets 利用自适应残差连接，使网络能够从浅层模型开始并在训练期间逐步加深。这种创新方法缓解了与传统 MLP 相关的问题，传统 MLP 通常难以进行导数训练和不稳定地最小化 PDE 残差损失。自适应初始化方案允许网络编码特定于底层 PDE 系统的合适归纳偏置，从而提高模型性能。
+
+\subsubsection{区域分解}
+
+区域分解是一种用于将复杂求解域划分为多个较小子域以提高计算效率和求解精度的技术。它在 PINN 中的应用特别适合处理大规模和复杂的问题。通过将整个求解域分解为几个子域，可以在每个子域中独立求解问题，并且并行计算可以加快求解过程。在相邻子域之间引入界面条件以确保解的连续性和一致性。区域分解方法可以灵活地适应复杂的几何形状和边界条件，使 PINN 更加通用和高效。它是求解复杂 PDE 问题的一种有前途的方法（图 9）。
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.7\textwidth]{images/Fig_9.png}
+\caption{PINN 中的区域分解方法 (Wu 等 2022)}
+\end{figure}
+
+接下来，我们将介绍区域分解方法的一些关键公式。整个求解域 $\Omega$ 分为 $N$ 个子域 $\Omega_i$，
+\begin{equation}
+\Omega = \bigcup_{i=1}^{N} \Omega_i
+\end{equation}
+物理方程在每个子域 $\Omega_i$ 内求解，
+\begin{equation}
+\mathcal{F}_i(u_i) = 0 \quad \text{in} \quad \Omega_i,
+\end{equation}
+其中 $\mathcal{F}_i$ 表示子域 $\Omega_i$ 中的物理方程，$u_i$ 是子域 $\Omega_i$ 中的解。引入相邻子域之间的界面条件以确保解的连续性和一致性。令 $\Gamma_{ij}$ 为子域 $\Omega_i$ 和 $\Omega_j$ 之间的界面，界面条件定义为，
+\begin{equation}
+u_i = u_j \quad \text{on} \quad \Gamma_{ij}.
+\end{equation}
+那么复合损失函数如下，
+\begin{equation}
+\mathcal{L} = \sum_{i=1}^{N} \mathcal{L}_{\text{physics}}^i + \sum_{i \neq j} \mathcal{L}_{\text{interface}}^{ij},
+\end{equation}
+其中物理损失 $\mathcal{L}_{\text{physics}}^i$ 在每个子域内计算，界面损失 $\mathcal{L}_{\text{interface}}^{ij}$ 在相邻子域之间的界面上计算。
+
+在 Karniadakis 和 Em (2020) 中，提出了扩展 PINN (XPINNs)，这是一种用于在复杂几何域上求解非线性 PDE 的广义时空区域分解方法。XPINNs 可以应用于任何类型的 PDE，并允许在空间和时间上进行任意区域分解，从而促进高效的并行计算。在每个子域内，部署一个具有最佳选择的超参数的单独神经网络。这使得在具有复杂解的子域中使用更深的网络，而在较简单的区域中使用较浅的网络。Jagtap 等 (2020a) 提出了用于求解非线性守恒律的离散域上的守恒 PINN (cPINNs)。它将计算域划分为离散子域，并在每个子域内应用 PINN，同时强制跨界面的通量连续性以确保全局守恒。cPINN 框架在选择优化算法和训练参数（如残差点的数量和位置、激活函数以及网络宽度和深度）方面提供了额外的灵活性。同样，Wu 等 (2022) 提出了一种基于区域分解的改进深度神经网络方法。它可以解决 PINN 由于使用单个神经网络和梯度病态而在处理大规模复杂问题时的局限性。
+
+\subsubsection{PINN 的激活函数}
+
+非线性激活函数在 PINN 中至关重要，因为它们使网络能够学习和表示 PDE 中固有的复杂非线性关系。常见的选择包括双曲正切 (tanh)、sigmoid。最近的研究探索了专门的激活函数，如正弦 (sin) 函数。
+
+已经为 PINN 开发了各种新颖的激活函数。例如，Jagtap 等 (2020b) 介绍了一种用于 PINN 的带有可缩放超参数的自适应激活函数，该函数在训练期间动态调整，从而优化网络的拓扑结构并显着提高收敛速度和求解精度。实证结果表明，自适应激活函数优于传统的固定激活函数，尤其是在早期训练阶段。该论文还提供了理论证明，即利用所提出方法的梯度下降算法不会被吸引到次优临界点或局部最小值。Fu 等 (2024) 介绍了物理信息核函数神经网络 (PIKFNNs)，旨在求解各种线性及特定非线性 PDE。PIKFNNs 采用单隐层浅层神经网络结构，使用物理信息核函数 (PIKFs) 作为自定义激活函数。这些 PIKF 包含 PDE 信息，如基本解、格林函数、调和函数和简化线性 PDE 的解，增强了网络准确近似解的能力。它表明，PIKFNNs 在准确性和效率方面比传统 PINN 有显著提高，特别是在处理不规则域和复杂几何形状方面。Abbasi 和 Andersen (2024) 提出了物理激活函数 (PAFs)，它是从所研究的物理系统中固有的数学表达式派生出来的，而不是仅依赖于 tanh 或 sigmoid 等标准激活函数。PAF 可以以显式或自适应方式集成到神经网络中，后者允许自动确定 PAF 对每个神经元的相对影响。研究表明，PAF 显着提高了 PINN 预测的准确性，特别是对于训练外数据，并在保持准确性的同时将网络规模减少了多达 75%。
+
+此外，Zeng 等 (2022) 介绍了创新的自适应技术，以提高深度神经网络 (DNN) 在求解高维 PDE 时的计算性能。作者提出了三个关键策略：自适应损失函数、自适应激活函数和自适应采样。这些方法旨在提高 DNN 的准确性和收敛速度，而不增加网络复杂性。自适应损失函数修改了传统的 $L^2$ 范数，引入了一个参数 $\alpha$，根据训练阶段转换损失函数。自适应激活函数改变跨层的激活，自适应采样策略将更多点分配给局部残差误差较高的区域。数值实验表明，这些技术显着优于传统方法，对于某些 50 维问题，相对误差达到 $O(10^{-4})$ 量级。该研究提供了一种有前途的自适应方法，以增强 DNN 在计算物理和工程中的性能。

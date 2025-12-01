@@ -12,6 +12,11 @@ class ADAM(Algorithm):
         self.eps     = param_method["eps"]
         self.lr      = param_method["lr"]
         self.__initialize_momentum()
+        
+        # Curriculum Learning Setup
+        self.target_pde_sigma = bayes_nn.vars["pde"]
+        self.start_pde_sigma = 2.0
+        self.annealing_steps = min(self.epochs, 5000) # Anneal over first 5000 steps
 
     def __initialize_momentum(self):
         self.m = self.model.nn_params*0
@@ -19,7 +24,18 @@ class ADAM(Algorithm):
 
     def sample_theta(self, theta_0):
         """ Samples one parameter vector given its previous value """
-        full_loss  = self.curr_ep > self.burn_in
+        
+        # PDE Weight Annealing
+        if self.curr_ep <= self.annealing_steps:
+            progress = self.curr_ep / self.annealing_steps
+            # Log-linear annealing
+            current_sigma = self.start_pde_sigma * (self.target_pde_sigma / self.start_pde_sigma) ** progress
+            self.model.vars["pde"] = current_sigma
+        else:
+            self.model.vars["pde"] = self.target_pde_sigma
+
+        # Always compute full loss now, as we use soft weighting instead of hard burn-in
+        full_loss  = True 
         grad_theta = self.model.grad_loss(self.data_batch, full_loss)
         theta = theta_0.copy()
         

@@ -53,10 +53,22 @@ print("\tInitializing the Bayesian PINN...")
 bayes_nn = BayesNN(params, equation) # Initialize the Bayesian NN
 starred_print("DONE")
 
+# %% Building saving directories and Plotter
+# We need Plotter during training for real-time monitoring
+print("Building saving directories...")
+path_folder  = create_directories(params)
+save_storage = Storage(path_folder)
+
+# Save parameters immediately so Plotter can read them
+save_storage.save_parameter(params)
+
+plotter = Plotter(path_folder)
+
 # %% Model Training
 
 print(f"Building all algorithms...")
-train_algorithm = Trainer(bayes_nn, params, dataset)
+# Pass plotter and storage to Trainer for real-time plotting
+train_algorithm = Trainer(bayes_nn, params, dataset, plotter, save_storage)
 train_algorithm.pre_train()
 starred_print("DONE")
 train_algorithm.train()
@@ -76,10 +88,6 @@ starred_print("DONE")
 
 # %% Saving
 
-print("Building saving directories...")
-path_folder  = create_directories(params)
-save_storage = Storage(path_folder)
-
 print("Saving data...")
 # Saving Details and Results
 save_storage.save_parameter(params)
@@ -97,13 +105,17 @@ starred_print("DONE")
 # %% Plotting
 
 print("Loading data...")
-plotter = Plotter(path_folder)
-load_storage = Storage(path_folder)
+# Plotter and Storage already initialized
+load_storage = Storage(path_folder) # Re-load to ensure consistency if needed, or just use save_storage
 print("Plotting the history...")
 plotter.plot_losses(load_storage.history)
 print("Plotting the results...")
 plotter.plot_confidence(load_storage.data, load_storage.confidence)
-plotter.plot_nn_samples(load_storage.data, load_storage.nn_samples)
+# Add extra plots for final result
+# Note: training_data_distribution and error_distribution might require extra data handling not present in load_storage by default
+# But we can try plotting them if main_plot_only logic is integrated or we rely on real-time plots.
+# For now, keep standard plots.
+# plotter.plot_nn_samples(load_storage.data, load_storage.nn_samples)
 starred_print("END")
 
 plotter.show_plot()

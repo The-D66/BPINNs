@@ -1,0 +1,88 @@
+{
+	"general": {
+		"problem": "SaintVenant1D",
+		"case_name": "simple",
+		"init": "ADAM",
+		"method": "HMC"
+	},
+	"num_points": {
+		"sol": 150,
+		"par": 0,
+		"bnd": 1024,
+		"pde": 2000
+	},
+	"uncertainty": {
+		"sol": 1.0,
+		"par": 0.0,
+		"bnd": 0.05,
+		"pde": 0.02,
+		"noise_h_std_phys": 0.2,
+		"noise_Q_std_phys": 0.5,
+		"weight_std": 0.1
+	},
+	"architecture": {
+		"activation": "tanh", 
+		"n_layers": 5,
+		"n_neurons": 100,
+        "fourier_scale": 0.0,
+        "fourier_dim": 20
+	},
+	"losses": {
+		"data_u": "True",
+		"data_f": "False",
+		"data_b": "True",
+		"pde": "True",
+		"prior": "True"
+	},
+	"metrics": {
+		"data_u": "True",
+		"data_f": "False",
+		"data_b": "True",
+		"pde": "True",
+		"prior": "True"
+	},
+	"utils": {
+		"random_seed": 56,
+		"debug_flag": "True",
+		"save_flag": "True",
+		"gen_flag": "True"
+	},
+	"ADAM_0": {
+		"epochs": 3000,
+		"burn_in": 0,
+		"beta_1": 0.9,
+		"beta_2": 0.999,
+		"eps": 1e-8,
+		"lr": 1e-3,
+        "losses": {
+            "data_u": "True",
+            "data_f": "False",
+            "data_b": "True",
+            "pde": "True",
+            "prior": "True"
+        }
+	},
+	"VI": {
+		"epochs": 100,
+		"burn_in": 0,
+		"VI_samples": 50,
+		"VI_alpha": 1e-5
+	},
+	"HMC": {
+		"epochs": 500,
+		"burn_in": 100,
+		"HMC_skip": 5,
+		"HMC_L": 20,
+		"HMC_dt": 5e-6,
+		"HMC_eta": 0.01
+	},
+	"physics": {
+		"length": 10000.0,
+		"time": 14400.0,
+		"h0": 5.0,
+		"Q0": 20.0,
+		"slope": 0.001,
+		"manning": 0.03,
+        "viscosity": 0.005
+	}
+}

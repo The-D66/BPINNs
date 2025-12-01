@@ -1,0 +1,331 @@
+\documentclass[aspectratio=169]{beamer}
+
+% 中文支持
+\usepackage{xeCJK}
+\setCJKmainfont[BoldFont=PingFang SC Semibold, ItalicFont=PingFang SC Light]{PingFang SC}
+\setsansfont[BoldFont=PingFang SC Semibold]{PingFang SC} % Beamer 默认使用无衬线字体
+
+% 宏包
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows, positioning, fit, calc}
+\usepackage{booktabs}
+\usepackage{multicol}
+\usepackage{hyperref}
+
+% 主题设置
+\usetheme{Madrid}
+\usecolortheme{default}
+\setbeamercovered{transparent}
+
+% 自定义颜色
+\definecolor{DeepBlue}{RGB}{0,51,102}
+\setbeamercolor{structure}{fg=DeepBlue}
+\setbeamercolor{title}{bg=DeepBlue, fg=white}
+\setbeamercolor{frametitle}{bg=DeepBlue, fg=white}
+
+% 标题信息
+\title[PINN 综述]{PDE 问题的物理信息神经网络：综述 \\ Physics-informed neural networks for PDE problems: a comprehensive review}
+\author{汇报人：Gemini Agent}
+\institute{基于 Luo 等 (2025) 的论文}
+\date{\today}
+
+\begin{document}
+
+% 1. 标题页
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% 2. 目录
+\begin{frame}{目录}
+    \tableofcontents
+\end{frame}
+
+% ============================================================ 
+% Section 1: 背景与基础
+% ============================================================ 
+\section{背景与数理基础}
+
+\begin{frame}{科学计算的新范式：AI for Science}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{block}{传统数值方法 (FEM/FVM)}
+            \begin{itemize}
+                \item \textbf{优点}：理论成熟，精度高。
+                \item \textbf{痛点}：网格生成复杂，高维问题“维数灾难”，反问题求解困难。
+            \end{itemize}
+        \end{block}
+        
+        \begin{block}{物理信息机器学习 (PIML)}
+            \begin{itemize}
+                \item \textbf{核心}：数据 + 物理定律 (PDEs)。
+                \item \textbf{优势}：无网格 (Mesh-free)，易于处理反问题，融合观测数据。
+            \end{itemize}
+        \end{block}
+
+                \column{0.5\textwidth}
+                \centering
+                \includegraphics[height=0.75\textheight, keepaspectratio]{images/Fig_1.png}
+                \\ \scriptsize{图 1：物理信息机器学习在各领域的应用}
+            \end{columns}
+        \end{frame}
+        
+        \begin{frame}{PINN 的核心数理逻辑}
+                \begin{columns}
+                    \column{0.55\textwidth}
+                    \small
+                    \textbf{问题}：求解 $u(x,t)$ 使得
+                    $$ f(x, t, \partial_x u, \partial_t u, \lambda) = 0 $$
+                    
+                    \textbf{损失函数} $\mathcal{L} = \mathcal{L}_{physics} + \mathcal{L}_{data}$
+                    
+                    \begin{itemize}
+                        \item \textbf{物理损失} (残差):
+                        $ \mathcal{L}_f = \frac{1}{N_f} \sum |f(x_f, t, \lambda)|^2 $
+                        \item \textbf{边界/初始条件}:
+                        $ \mathcal{L}_{b/i} = \frac{1}{N_{b/i}} \sum |\tilde{u} - g|^2 $
+                        \item \textbf{数据损失} (可选):
+                        $ \mathcal{L}_{data} = \frac{1}{N_d} \sum |\tilde{u} - u_{obs}|^2 $
+                    \end{itemize}        
+                \column{0.45\textwidth}
+                \centering
+                \includegraphics[width=0.9\textwidth, height=0.65\textheight, keepaspectratio]{images/Fig_2.png}
+                \scriptsize{图 2：PINN 框架}
+            \end{columns}
+        \end{frame}
+        
+        % ============================================================
+        % Section 2: 架构演进
+        % ============================================================
+        \section{网络架构演进}
+        
+        \begin{frame}{PINN 架构概览}
+            \centering
+            \includegraphics[width=\textwidth, height=0.8\textheight, keepaspectratio]{images/Fig_3.png}
+            \\
+            \vspace{0.5em}
+            从简单的 MLP 到 结合 KAN、Transformer 的复杂架构
+        \end{frame}
+        
+        \begin{frame}{主流架构对比 (1)}
+            \begin{columns}
+                \column{0.5\textwidth}
+                \begin{block}{MLP (多层感知机)}
+                    \begin{itemize}
+                        \item 基础架构，通用近似定理。
+                        \item \textbf{局限}：频谱偏差，难捉高频。
+                    \end{itemize}
+                \end{block}
+                \centering
+                \includegraphics[height=0.45\textheight, keepaspectratio]{images/Fig_4.png}
+        
+                \column{0.5\textwidth}
+                \begin{block}{CNN (卷积神经网络)}
+                    \begin{itemize}
+                        \item \textbf{适用}：规则网格，图像类数据。
+                        \item \textbf{变体}：PhyGeoNet, f-PICNN。
+                    \end{itemize}
+                \end{block}
+                \centering
+                \includegraphics[height=0.45\textheight, keepaspectratio]{images/Fig_5.png}
+                \\ \scriptsize{图 5：f-PICNN 架构}
+            \end{columns}
+        \end{frame}
+        
+        \begin{frame}{主流架构对比 (2)}
+            \begin{columns}
+                \column{0.5\textwidth}
+                \begin{block}{RNN (循环神经网络)}
+                    \begin{itemize}
+                        \item \textbf{适用}：时间依赖问题，序列建模。
+                        \item \textbf{PhyCRNet}：CNN + ConvLSTM。
+                    \end{itemize}
+                \end{block}
+                \centering
+                \includegraphics[height=0.45\textheight, keepaspectratio]{images/Fig_6.png}
+        
+                        \column{0.48\textwidth}
+                        \begin{block}{Transformer}
+                            \begin{itemize}
+                                \item \textbf{优势}：Attention 捕捉长程依赖。
+                                \item \textbf{PINNsFormer}：Wavelet + Attention。
+                            \end{itemize}
+                        \end{block}
+                        \centering
+                        \includegraphics[width=\textwidth, height=0.4\textheight, keepaspectratio]{images/Fig_7.png}            \end{columns}
+        \end{frame}
+        
+        \begin{frame}{前沿架构：KAN 与 区域分解}
+            \begin{columns}
+                \column{0.5\textwidth}
+                \begin{block}{Kolmogorov-Arnold Networks (KAN)}
+                    \begin{itemize}
+                        \item 激活函数在\textbf{边}上。
+                        \item \textbf{公式}：$f(x) = \sum \Phi_q (\sum \phi_{q,p}(x_p))$
+                        \item \textbf{优势}：高维函数更高效，可解释性。
+                    \end{itemize}
+                \end{block}
+        
+                \column{0.5\textwidth}
+                \begin{block}{区域分解 (Domain Decomposition)}
+                    \begin{itemize}
+                        \item \textbf{XPINNs / cPINNs}
+                        \item 将复杂域划分为子域，并行求解。
+                        \item 通过界面条件拼接。
+                    \end{itemize}
+                \end{block}
+                \centering
+                \includegraphics[height=0.4\textheight, keepaspectratio]{images/Fig_9.png}
+            \end{columns}
+        \end{frame}
+% ============================================================ 
+% Section 3: 优化方法
+% ============================================================ 
+\section{关键优化方法}
+
+\begin{frame}{痛点与解决方案概览}
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.5cm,
+        block/.style={rectangle, draw=DeepBlue, fill=blue!10, rounded corners, text width=3cm, align=center, minimum height=1.2cm},
+        solution/.style={rectangle, draw=red!80!black, fill=red!10, rounded corners, text width=3cm, align=center, minimum height=1.2cm},
+        arrow/.style={->, >=stealth, thick, color=DeepBlue}
+    ]
+        \node (p1) [block] {收敛慢 / 陷入局部极小};
+        \node (s1) [solution, right=of p1] {自适应重采样 \\ (RAR, GAS, HA)};
+        \node (p2) [block, below=of p1] {多目标损失不平衡 \\ (梯度病态)};
+        \node (s2) [solution, right=of p2] {损失重加权 \\ (Loss Reweighting, NTK)};
+        \node (p3) [block, below=of p2] {高频/多尺度问题 \\ (频谱偏差)};
+        \node (s3) [solution, right=of p3] {特征嵌入 (Fourier) \\ + 维度增强 (DaPINN)};
+
+        \draw [arrow] (p1) -- (s1);
+        \draw [arrow] (p2) -- (s2);
+        \draw [arrow] (p3) -- (s3);
+    \end{tikzpicture}
+\end{frame}
+
+\begin{frame}{自适应采样 (Adaptive Resampling)}
+    \begin{columns}
+        \column{0.6\textwidth}
+        \begin{itemize}
+            \item \textbf{核心思想}：在 PDE 残差大的区域增加采样点。
+            \item \textbf{方法}：
+                \begin{itemize}
+                    \item \textbf{RAR}：基于残差添加点。
+                    \item \textbf{GAS}：高斯混合分布采样。
+                    \item \textbf{HA (Hybrid Adaptive)}：结合随机性与残差导向。
+                \end{itemize}
+            \item \textbf{效果}：显著降低 L2 误差 (见图 10)。
+        \end{itemize}
+
+        \column{0.4\textwidth}
+        \centering
+        \includegraphics[width=\textwidth, height=0.75\textheight, keepaspectratio]{images/Fig_10.png}
+        \scriptsize{图 10：HA 采样方法在泊松方程上的性能提升}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{特征嵌入与维度增强}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{block}{特征嵌入 (Feature Embedding)}
+            \begin{itemize}
+                \item 解决 MLP 的频谱偏差。
+                \item \textbf{傅里叶特征}：映射输入 $x \to [\sin(2\pi B x), \cos(2\pi B x)]$。
+            \end{itemize}
+        \end{block}
+        \begin{block}{维度增强 (DaPINN)}
+            \begin{itemize}
+                \item 人为扩展网络输入维度。
+                \item 提取更丰富特征，提高精度。
+            \end{itemize}
+        \end{block}
+
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.8\textheight, keepaspectratio]{images/Fig_11.png}
+        \scriptsize{图 11：DaPINN 框架示意图}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{DaPINN 实验效果}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.65\textheight, keepaspectratio]{images/Fig_12.png}
+        \\ \scriptsize{图 12：1D 泊松方程 (DaPINN vs PINN)}
+        
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.65\textheight, keepaspectratio]{images/Fig_13.png}
+        \\ \scriptsize{图 13：Burgers 方程 (DaPINN vs PINN)}
+    \end{columns}
+\end{frame}
+
+% ============================================================ 
+% Section 4: 应用与挑战
+% ============================================================ 
+\section{应用与未来}
+
+\begin{frame}{典型应用场景}
+    \begin{itemize}
+        \item \textbf{流体动力学}
+            \begin{itemize}
+                \item 求解 Navier-Stokes 方程。
+                \item 根据稀疏观测数据重建流场 (如 PIV 实验)。
+                \item 无需完整边界条件即可求解反问题。
+            \end{itemize}
+        \item \textbf{固体力学}
+            \begin{itemize}
+                \item 弹性、塑性、断裂力学模拟。
+                \item 材料参数反演。
+            \end{itemize}
+        \item \textbf{光学与电磁学}
+            \begin{itemize}
+                \item 求解 Maxwell 方程组。
+                \item 超材料设计与逆散射问题。
+            \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{挑战与未来展望}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{block}{当前挑战}
+            \begin{enumerate}
+                \item \textbf{优化困难}：非凸优化，梯度不平衡。
+                \item \textbf{计算效率}：训练时间长，收敛精度瓶颈 ($10^{-3} \sim 10^{-4}$)。
+                \item \textbf{高频/多尺度}：传统网络难以捕捉。
+            \end{enumerate}
+        \end{block}
+
+        \column{0.5\textwidth}
+        \begin{block}{未来方向：算子学习 (Operator Learning)}
+            \begin{itemize}
+                \item 从学习“函数”转向学习“算子”。
+                \item \textbf{DeepONet / FNO}。
+                \item 一次训练，求解一类方程（不同初始条件/参数）。
+                \item 泛化能力更强，推理速度更快。
+            \end{itemize}
+        \end{block}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{总结}
+    \centering
+    \begin{itemize}
+        \Large
+        \item \textbf{PINN 是连接 数据驱动 与 物理定律 的桥梁。}
+        \item \textbf{架构创新} (KAN, Transformer) 不断突破精度极限。
+        \item \textbf{优化策略} (自适应采样, 损失平衡) 解决了训练难题。
+        \item \textbf{算子学习} 代表了下一代科学计算的发展方向。
+    \end{itemize}
+    
+    \vspace{1cm}
+    \textbf{\Large 谢谢！ \\ Q \& A}
+\end{frame}
+
+\end{document}

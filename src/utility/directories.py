@@ -23,9 +23,13 @@ def create_directories(par):
     
     problem_folder   = __create_single_dir("../outs", par.problem, keep=True)
     case_folder = __create_single_dir(problem_folder, par.folder_name, keep=True)
-    case_time = f"{datetime.now().strftime('%Y.%m.%d-%H.%M.%S')}"
-    file_name = par.method + "_" + case_time if par.utils["save_flag"] else "trash"
-    case_folder = __create_single_dir(case_folder, file_name, over=True)
+    
+    # Add timestamp to folder name
+    timestamp = datetime.now().strftime("%Y.%m.%d-%H.%M.%S")
+    file_name = f"{par.method}_{timestamp}" if par.utils["save_flag"] else "trash"
+    
+    # Create new directory for this run
+    case_folder = __create_single_dir(case_folder, file_name, over=False)
     
     path_plot   = __create_single_dir(case_folder, "plot")
     path_values = __create_single_dir(case_folder, "values")

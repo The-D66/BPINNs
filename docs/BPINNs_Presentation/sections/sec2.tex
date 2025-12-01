@@ -1,0 +1,39 @@
+\section{大规模工况定义}
+
+\begin{frame}
+    \frametitle{大规模工况定义}
+    \textbf{设置}: 长度 10km，时长 4h，采用上游流量、下游水位边界。正式模拟前预热1h。\\模拟过程中前一小时流量 $Q_{in}$ 线性减半。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/scenario.png}
+    \end{figure}
+\end{frame}
+
+\section{阶段二：理想基准}
+
+\begin{frame}
+    \frametitle{阶段二：无噪声基准 - 水深 (h)}
+    \textbf{目的}: 验证网络容量。预测值 (右) 与真值 (左) 完美重合。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_clean_h.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段二：无噪声基准 - 流速 (u)}
+    流速预测同样精准，无伪影。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_clean_u.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段二：Demo 误差分析}
+    上游误差沿特征线向下游传播，上游1h后的稳定边界特征完全丢失
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_clean_err.png}
+    \end{figure}
+\end{frame}

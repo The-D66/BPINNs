@@ -1,0 +1,55 @@
+\section{阶段三：噪声挑战}
+\begin{frame}
+    \frametitle{阶段三：工况设置}
+    \textbf{设置}: 在阶段二的基础上，向观测数据添加噪声，模拟实际测量误差对模型的影响。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.8\textheight, keepaspectratio]{images/noisy_solution_full_domain.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段三：全域水深模拟结果 (h)}
+    加入 5\% 高斯噪声后，水深预测出现严重伪影。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_noisy_h.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段三：全域流速模拟结果 (u)}
+    流速场也出现剧烈震荡，无法使用。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_noisy_u.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段三：误差传播机制分析}
+    误差连片聚集分布，沿特征线扩散。
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_noisy_err.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段三：时序分析 (水深 h)}
+    预测值剧烈震荡，物理守恒性丧失。\\黑色：FEM解。红色：带误差的模型训练输入。蓝色：BPINN预测值。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_noisy_ts.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{阶段三：时序分析 (流量 Q)}
+    预测值剧烈震荡，物理守恒性丧失。
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth, height=0.75\textheight, keepaspectratio]{images/res_noisy_ts_q.png}
+    \end{figure}
+\end{frame}

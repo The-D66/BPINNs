@@ -1,0 +1,130 @@
+\subsection{PINN 的自适应数据重采样}
+
+PINN 的性能在很大程度上依赖于采样点的策略性选择，以有效地训练网络。这些点的位置或分布对于准确近似解至关重要。
+
+在大多数 PINN 中，用于训练的收集点（通常称为残差点）是在训练开始时指定的，并且在训练过程中不会更改。PINN 中可以使用各种采样方法，例如均匀采样、随机采样、拉丁超立方采样 (LHS) (Stein 1987; Mckay 等 2000)、Halton 序列 (Halton 1960; Berblinger 和 Schlier 1991)、Hammersley 序列 (Wong 等 1997)、Sobol 序列 (Sobol’ 1967)。为了提高 PINN 的准确性，另一种方法是在每隔一定的迭代次数后选择一组新的残差点进行训练 (Lu 等 2021b)。甚至可以在不同时间使用不同的采样方法。
+
+虽然固定采样策略因其简单性而被广泛使用，但它们并不总是最有效或最准确的方法，特别是对于具有复杂几何形状或解表现出急剧梯度的问题。最近，已经开发了自适应采样策略，根据网络训练的当前状态动态调整采样点的分布。这些自适应方法已显示出在较少残差点的情况下显着提高 PINN 的准确性。Lu 等 (2021b) 提出了 PINN 的第一个自适应采样，即基于残差的自适应细化 (RAR) 方法，该方法在 PDE 残差较大的位置添加新的残差点。在 Nabian 等 (2021) 中，介绍了一种提高 PINN 训练效率的重要性采样方法。通过根据与损失函数成比例的分布对配点进行采样，该方法加速了收敛并提高了训练效果。该技术易于实现，不引入新的超参数，并通过数值例子证明可以显着提高计算效率。Wu 等 (2023) 提供了 PINN 采样策略的综合研究，检查了非自适应和自适应重采样方法。它提出了两种新的自适应非均匀采样技术：基于残差的自适应分布 (RAD) 和具有分布的基于残差的自适应细化 (RAR-D)。这些方法根据设计的概率密度函数 (PDF) 动态调整残差点的分布，以提高 PINN 的训练效率和准确性。在 Daw 等 (2023) 中，提出了一种新颖的保留-重采样-释放 (R3) 采样算法，以解决 PINN 中的传播失败问题。它假设 PINN 的成功训练取决于解从初始/边界条件到内部点的有效传播。以不平衡 PDE 残差场为特征的传播失败会导致 PINN 收敛到平凡解。R3 算法在高 PDE 残差区域逐渐累积配点，以最小的计算开销减轻这些失败。
+
+此外，Tang 等 (2023) 提出了 DAS-PINNs，它使用深度生成模型通过生成新的配点来动态细化训练集。具体来说，该方法将残差视为概率密度函数，并使用称为 KRnet 的生成模型来采样与此分布一致的点——更多样本放置在残差较高的区域。Yang 等 (2023) 提出了基于动态网格的重要性采样 (DMIS)，以解决 PINN 训练中固有的计算效率低和收敛不稳定问题。DMIS 通过构建有效估计样本权重的动态三角网格，将重要性采样集成到训练过程中。对三个基准——薛定谔方程、粘性 Burgers 方程和 Korteweg-de Vries 方程的评估——证明了 DMIS 在提高收敛速度和准确性方面的优越性能。在 Jiao 等 (2024) 中，提出了一种用于 PINN 的基于高斯混合分布的自适应采样 (GAS) 方法。受增量学习的启发，作者提出了风险最小-最大框架，动态细化配点的采样。GAS 利用当前的残差信息生成高斯混合分布以采样额外的点，从而加速收敛并提高准确性。Lau 等 (2024) 介绍了 PINNACLE（PINN 自适应配点和实验点选择），这是一种旨在优化 PINN 所有类型训练点选择的算法。与以前仅关注配点或实验点的方法不同，PINNACLE 联合优化两者的选择，随着训练的进行调整配点类型的比例。Tang 等 (2024) 提出了对抗性自适应采样 (AAS)，这是一种将 PINN 与最优传输理论相结合的新颖方法。AAS 采用深度生成模型来调整训练集中随机样本的分布，确保神经网络引起的残差保持平滑的轮廓。通过将残差引起的分布与均匀分布之间的 Wasserstein 距离嵌入到损失函数中，AAS 最小化了随机样本引入的统计误差。所有这些方法都提高了网络训练的效率，从而显着增强了 PINN 在各种 PDE 问题中的性能。
+
+受上述研究的启发，我们提出了一种增强的混合自适应 PINN (Luo 等 2025)。它采用混合自适应 (HA) 采样方法，该方法确保采样点的随机性，同时也充分考虑训练过程中具有大 PDE 残差的点。HA 方法在训练期间结合了两种不同的重采样策略。表 3 和图 10 中展示了一些示例，证明了我们提出的方法优于最先进的重采样方法。
+
+\begin{table}[htbp]
+\centering
+\caption{一维泊松方程的示例}
+\label{tab:poisson}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\hline
+方法 & \multicolumn{2}{c}{Epochs = 20000} & \multicolumn{2}{c}{Epochs = 40000} \\
+ & $N_r = 14$ & $N_r = 26$ & $N_r = 14$ & $N_r = 26$ \\
+\hline
+PINN & 18.07\% $\pm$ 3.70\% & 6.82\% $\pm$ 4.11\% & 48.28\% $\pm$ 36.22\% & 15.30\% $\pm$ 13.95\% \\
+PINN Random-R & 3.76\% $\pm$ 2.02\% & 0.99\% $\pm$ 1.37\% & 2.52\% $\pm$ 1.89\% & 0.14\% $\pm$ 0.06\% \\
+RAD (Wu et al. 2023) & & & & \\
+\quad k = 1, c = 1 & 5.49\% $\pm$ 4.53\% & 2.23\% $\pm$ 2.54\% & 1.62\% $\pm$ 1.28\% & 1.02\% $\pm$ 1.53\% \\
+\quad k = 1, c = 2 & 3.31\% $\pm$ 1.57\% & 2.51\% $\pm$ 2.81\% & 2.21\% $\pm$ 1.40\% & 0.82\% $\pm$ 0.82\% \\
+\quad k = 2, c = 1 & 5.44\% $\pm$ 4.95\% & 3.78\% $\pm$ 2.30\% & 2.04\% $\pm$ 2.06\% & 1.11\% $\pm$ 0.65\% \\
+\quad k = 2, c = 2 & 6.00\% $\pm$ 5.49\% & 2.50\% $\pm$ 2.44\% & 1.87\% $\pm$ 1.59\% & 0.89\% $\pm$ 1.01\% \\
+PINN HA (ours) & \textbf{2.73\% $\pm$ 2.38\%} & \textbf{0.24\% $\pm$ 0.21\%} & \textbf{1.28\% $\pm$ 0.76\%} & \textbf{0.11\% $\pm$ 0.08\%} \\
+\hline
+\end{tabular}%
+}
+\caption*{比较方法的 L2 相对误差。实验重复十次，计算 L2 相对误差的平均值和标准差。$N_r$ 表示残差点的数量。}
+\end{table}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.9\textwidth]{images/Fig_10.png}
+\caption{我们要提出的 HA 采样方法在一维泊松方程上的性能}
+\end{figure}
+
+\subsection{PINN 的损失函数和优化}
+
+在 PINN 中，损失函数在模型训练和性能中起着关键作用。损失函数影响收敛性和网络有效学习的能力。
+
+\subsubsection{损失重加权}
+
+在 PINN 中，PDE 损失、初始和边界条件损失通常加在一起并直接优化。然而，不同损失项的规模和收敛速度可能会有所不同。这些损失之间的不平衡会导致性能下降。为了缓解这些问题，已经提出了各种损失重加权方法，自适应地调整损失函数中不同分量的相对重要性。
+
+Wang 等 (2021c) 检查了 PINN 中的梯度流病态，并提出了提高其预测精度的解决方案。它引入了一种学习率退火算法，利用梯度统计来平衡复合损失函数，并提出了一种对梯度问题更具弹性的新型神经网络架构。这些发展将 PINN 在一系列计算物理问题上的准确性提高 50-100 倍。它为训练受约束的神经网络提供了新的见解，并提供了缓解梯度流病态的实用方法。Wang 等 (2022a) 使用神经切线核 (NTK) 框架研究了 PINN 的训练动态。它推导了 PINN 的 NTK，并证明在某些条件下，在无限宽度限制下，它会在训练期间收敛到一个保持恒定的确定性核。这允许通过 NTK 的视角分析 PINN 训练动态，揭示不同损失分量收敛速度的差异。为了解决这些问题，它提出了一种新颖的梯度下降算法，利用 NTK 的特征值来平衡训练过程，从而提高 PINN 的稳定性和有效性。在 Xiang 等 (2022) 中，提出了一种自适应损失平衡 PINN (lbPINNs)，它使用自适应机制在训练期间动态调整不同损失项的权重。这是通过概率建模和最大似然估计实现的。它建立了一个输出为 $u$ 的高斯概率模型。高斯似然定义为均值由 PINN 近似 $\hat{u}(x, t; \theta)$ 给出的高斯分布，以及不确定性参数 $\varepsilon_d$，
+\begin{equation}
+ p(u|\hat{u}(x, t; \theta)) = N(\hat{u}(x, t; \theta), \varepsilon_d^2)
+\end{equation}
+使用最大似然推断调整不确定性参数。为了实现这一点，最小化模型的负对数似然，
+\begin{equation}
+ -\log p(\boldsymbol{u}|\hat{\boldsymbol{u}}(\boldsymbol{x}, t; \theta)) \propto \frac{1}{2\varepsilon_d^2} \|\boldsymbol{u} - \hat{\boldsymbol{u}}(\boldsymbol{x}, t; \theta)\|^2 + \log \varepsilon_d = \frac{1}{2\varepsilon_d^2} \mathcal{L}_{\text{data}}(\theta) + \log \varepsilon_d.
+\end{equation}
+此外，假设我们的高斯概率模型的输出包括两个向量 $u, g$，每个都服从高斯分布，
+\begin{equation}
+ p(u, g|\hat{u}(x, t; \theta)) = p(u|\hat{u}(x, t; \theta)) \cdot p(g|\hat{u}(x, t; \theta)) = N(\hat{u}(x, t; \theta), \varepsilon_d^2) \cdot N(\hat{u}(x, t; \theta), \varepsilon_b^2).
+\end{equation}
+因此，它建立了具有四个向量的多输出模型来定义复杂的损失函数。lbPINN 的损失函数可以公式化为，
+\begin{equation}
+ \mathcal{L}(\epsilon; \theta; N) = \frac{1}{2\epsilon_f^2} \mathcal{L}_{\text{PDE}}(\theta; N_f) + \frac{1}{2\epsilon_b^2} \mathcal{L}_{\text{BC}}(\theta; N_b) + \frac{1}{2\epsilon_i^2} \mathcal{L}_{\text{IC}}(\theta; N_i) + \frac{1}{2\epsilon_d^2} \mathcal{L}_{\text{data}}(\theta; N_{\text{data}}) + \log \epsilon_f \epsilon_b \epsilon_i \epsilon_d,
+\end{equation}
+其中 $\epsilon = \{\epsilon_f, \epsilon_b, \epsilon_i, \epsilon_d\}$ 描述了损失项的自适应权重。$\omega = \{\omega_f, \omega_b, \omega_i, \omega_d\}, \omega := \frac{1}{2\epsilon^2}$ 描述了损失项的总权重。尽管 lbPINN 在设计快速准确的科学机器学习技术方面取得了进展，但仍有一些问题需要解决，例如 (1) 在上述实验中，PDE 损失的自适应权重下降缓慢是一个普遍现象。因此，我们将对这一现象进行理论分析，以提高该方法的鲁棒性和可扩展性。(2) 值得探讨的是，这个概率模型是否是最合适的，并且在某些假设下，是否有可能与其它几种损失平衡算法建立统一的框架。此外，甚至可以在每个训练点调整每个损失项的不同权重。例如，Gu 等 (2021) 提出了 SelectNet，这是一种新颖的自步学习框架，旨在提高 PINN 的收敛性。通过结合自适应加权训练样本的选择网络，SelectNet 在训练的早期阶段优先考虑较简单的样本，并逐渐结合更具挑战性的样本。
+
+此外，McClenny 和 Braga-Neto (2023) 介绍了自适应 PINN (SA-PINNs)，它采用完全可训练的自适应权重，对每个训练点施加单独的关注，使网络能够自主识别并专注于解的挑战性区域。自适应权重创建了一个软注意力掩码，随着相应损失的增加而增加。它还演示了如何使用高斯过程回归构建自适应权重的连续图，从而在传统梯度下降不足的情况下促进随机梯度下降的使用。实验表明，SA-PINNs 提高了 PDE 解的准确性和鲁棒性。Song 等 (2024) 引入了一种名为损失注意力 PINN (LA-PINN) 的新颖架构，以解决普通 PINN 在难以拟合区域遭受收敛速度慢和精度差的问题。该架构通过为每个独立的损失分量分配一个损失注意力网络 (LAN) 来关注每个训练点的损失误差控制。通过将点平方误差 (SE) 馈送到 LAN，可以构建“注意力函数”来完成向不同点误差分配不同权重的任务。LA-PINN 架构采用了一种基于点误差的加权方法，利用主网络和 LAN 之间的对抗训练。负责预测解的主网络通过梯度下降最小化损失，而 LAN 通过梯度上升调整 SE 的权重。这种机制通过增加这些点的权重和 SE 更新梯度的增长率，确保更多关注难以拟合的点。通过这种动态加权方法，与普通 PINN 和其他最先进的方法相比，LA-PINN 表现出卓越的预测性能和更快的收敛速度。数值实验证实了 LA-PINN 在推进难以拟合点的收敛和实现求解 PDE 的高精度方面的有效性。
+
+\subsubsection{新型损失函数}
+
+除了上面讨论的损失重加权方法外，还开发了许多变体损失函数。
+
+正则化是增强机器学习模型训练和泛化能力的重要技术。一些研究提出了 PINN 损失函数的各种正则化方法。Yu 等 (2022) 提出了梯度增强 PINN (gPINNs)，它将梯度信息集成到神经网络的损失函数中，从而增强了模型的性能。在传统的 PINN 中，主要目标是将 PDE 残差 $f$ 约束为零，确保在每个点 $x$，$f(x)=0$。然而，由于残差 $f(x)$ 在任何点 $x$ 均为零，因此可以推断其导数也应为零。因此，gPINNs 假设 PDE 的精确解足够平滑，使得 PDE 残差 $\nabla f(x)$ 的梯度存在，并建议通过强制 PDE 残差的导数也为零来增强 PINN。那么 gPINNs 的损失函数由下式给出，
+\begin{equation}
+ \mathcal{L} = w_f \mathcal{L}_f + w_b \mathcal{L}_b + w_i \mathcal{L}_i + \sum_{i=1}^{d} w_{g_i} \mathcal{L}_{g_i}(\theta; \mathcal{T}_{g_i}),
+\end{equation}
+其中
+\begin{equation}
+ \begin{aligned}
+ \mathcal{L}_f(\theta; \mathcal{T}_f) &= \frac{1}{|\mathcal{T}_f|} \sum_{x \in \mathcal{T}_f} \left| f\left(x; \frac{\partial \hat{u}}{\partial x_1}, \dots, \frac{\partial \hat{u}}{\partial x_d}; \frac{\partial^2 \hat{u}}{\partial x_1 \partial x_1}, \dots, \frac{\partial^2 \hat{u}}{\partial x_1 \partial x_d}; \dots; \lambda\right) \right|^2, \\
+ \mathcal{L}_b(\theta; \mathcal{T}_b) &= \frac{1}{|\mathcal{T}_b|} \sum_{x \in \mathcal{T}_b} |\mathcal{B}(\hat{u}, x)|^2, \\
+ \mathcal{L}_{g_i}(\theta; \mathcal{T}_{g_i}) &= \frac{1}{|\mathcal{T}_{g_i}|} \sum_{x \in \mathcal{T}_{g_i}} \left| \frac{\partial f}{\partial x_i} \right|^2, \\
+ \mathcal{L}_i(\theta, \lambda; \mathcal{T}_i) &= \frac{1}{|\mathcal{T}_i|} \sum_{x \in \mathcal{T}_i} |\hat{u}(x) - u(x)|^2,
+\end{aligned}
+\end{equation}
+其中 $w_f, w_b, w_i$ 和 $w_g$ 是权重。gPINNs 的优点包括提高了准确性、效率，并且更好地泛化到没有训练点的区域。它们通常需要较少的训练点即可达到与传统 PINN 相似或更好的精度，从而使其计算效率更高。通过利用梯度信息，gPINNs 具有更好的泛化能力，从而产生更鲁棒的解。当与 RAR 结合使用时，gPINNs 表现非常出色，特别是对于具有陡峭梯度解的 PDE。这使得 gPINNs 成为解决光学、流体力学、系统生物学和生物医学等各个领域中正向和反向 PDE 问题的有力工具。总体而言，gPINNs 代表了深度学习在 PDE 应用中的重大进步，提供了增强的性能和效率。在 Wang 等 (2024a) 中，专门设计了一个实用的 PINN 框架来解决具有多量级损失项的多尺度问题。所提出的方法通过实施分组正则化策略增强了传统的 PINN 方法，该策略归一化了不同损失分量的尺度。这确保了每一项对整体损失函数的贡献相等，从而提高了网络捕捉解的宏观和微观特征的能力。此外，该框架还结合了专门的神经网络架构，如傅里叶特征网络，以进一步提高准确性和效率。通过数值实验，证明了这种改进的 PINN 框架在求解多尺度 PDE 方面显着优于标准 PINN，使其成为应用在复杂多尺度现象中的宝贵工具。
+
+此外，Wang 等 (2022b) 挑战了在训练 PINN 求解 PDE 时使用 $L^2$ 损失的传统做法。它仔细审查了损失函数与学习解的准确性之间的关系，引入了 PDE 理论中的稳定性概念来分析当损失趋近于零时解的渐近行为。该研究聚焦于最优控制中关键的 Hamilton–Jacobi–Bellman (HJB) 方程，揭示了对于一般的 $L^p$ 损失函数，只有当 $p$ 足够大时才能实现稳定性。这一发现表明，无处不在的 $L^2$ 损失对于 HJB 方程可能是次优的，主张使用 $L^\infty$ 损失。该论文提出了一种新颖的 PINN 训练算法，该算法采用类似于对抗训练的最小-最大优化策略来最小化 $L^\infty$ 损失，通过实证实验证明了改进的解精度。该研究为 PINN 的损失函数设计提供了重要的见解，特别是对于高维非线性 PDE。Wang 等 (2024d) 调查了不同损失函数对 PINN 训练的影响。它将损失函数分为两类：观测数据损失，直接约束和衡量模型输出；以及模型损失，包括来自控制方程和变分形式的信息，间接影响网络性能。它揭示了一个稳定的“损失跳跃”现象：当从数据损失过渡到包含不同阶数导数信息的模型损失时，神经网络解会发生与精确解的显着偏差。进一步的实验表明，这种现象源于神经网络在各种损失函数下的不同频率偏好。理论分析阐明了模型损失下的频率偏好，为 PINN 求解 PDE 的潜在机制提供了见解。这项工作为优化训练过程和提高 PINN 的准确性提供了宝贵的视角。
+
+\subsection{特征嵌入和增强}
+
+特征嵌入广泛应用于机器学习的各个领域，如自然语言处理 (NLP) (Patil 等 2023)、计算机视觉 (CV) (Kan 等 2019) 和推荐系统 (Zhang 等 2016)。感兴趣的特征（或变量）被映射到向量空间，算法可以在其中更容易地辨别关系和模式。NeRF (Mildenhall 等 2020) 是一个典型的例子，空间编码有效地表示和处理有关输入点位置的信息。这种编码将每个输入点的空间位置与颜色和辐射水平等其他相关细节相结合，从而提高了图像重建和渲染的质量。NeRF 采用正弦和余弦函数对三维空间中的坐标进行编码，如下所示，
+\begin{equation}
+ \gamma(x, y, z) = (x, y, z, \sin(2^0 x), \sin(2^0 y), \sin(2^0 z), \cos(2^0 x), \cos(2^0 y), \cos(2^0 z), \dots, \sin(2^{n-1} z), \cos(2^{n-1} z))
+\end{equation}
+同样，Tancik 等 (2020) 基于神经切线核 (NTK) 理论 (Jacot 等 2018) 证明了傅里叶特征映射可以有效地减轻基于坐标的 MLP 对低频的谱偏差。采用具有合适尺度的随机选择的傅里叶特征映射，
+\begin{equation}
+ \gamma(v) = (a_1 \cos(2\pi b_1^T v), a_1 \sin(2\pi b_1^T v), \dots, a_m \cos(2\pi b_m^T v), a_m \sin(2\pi b_m^T v))^T.
+\end{equation}
+实验表明，这种方法提高了基于坐标的 MLP 在计算机视觉和图形学中各种低维任务上的性能（图 11）。
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.9\textwidth]{images/Fig_11.png}
+\caption{维度增强 PINN (DaPINN) (Guan 等 2023) 的框架}
+\end{figure}
+
+受上述工作的启发，许多结合特征嵌入的新型 PINN 被提出来提高性能。PINN 的一个基本弱点是谱偏差 (Rahaman 等 2019)，这是全连接神经网络中公认的挑战，限制了它们有效学习高频函数的能力。在 Wang 等 (2021a) 中，介绍了一种利用这种时空和多尺度随机傅里叶特征的新型 PINN 架构。它阐明了这些坐标嵌入层如何增强 PINN 模型的鲁棒性和准确性，有效地解决高频和多尺度挑战。Li 等 (2024a, c) 也利用了类似的傅里叶特征映射方法。Peng 等 (2020) 提出了配备任务相关字典的先验字典 PINN (PD-PINN)。PD-PINN 通过有效地从字典中捕获特征，在任务中表现出增强的表示能力，从而在训练期间实现更快的收敛。此外，Wong 等 (2024) 提出了 sf-PINN，其中利用了输入的正弦映射。这种方法可以有效地增加输入梯度变异性，从而避免陷入欺骗性的局部最小值。使用 sf-PINN，模型精度可以提高几个数量级。
+
+此外，一些计算机视觉 (CV) 任务中常用一些增强技术 (Perez 和 Wang 2017)，包括空间变换（翻转、旋转、裁剪等）、噪声注入、颜色变换等。同样，可以将更多特征插入 PINN 的输入向量中以提高模型的能力。我们提出了一种维度增强 PINN (DaPINN) (Guan 等 2023)，它系统地操纵网络的输入维度。DaPINN 的性能已在各种正向和反向 PDE 中进行了评估，包括泊松方程、热方程、扩散问题、Burgers 方程等。DaPINN 模型通过副本增强、幂级数增强和傅里叶级数增强提高了求解精度。例如，考虑以下具有 Dirichlet 边界条件 $u(x=0)=0$ 和 $u(x=\pi)=\pi$ 的一维泊松方程，
+\begin{equation}
+-\Delta u = \sum_{k=1}^{3} k \sin(kx) + 7 \sin(7x) + 8 \sin(8x), \quad x \in [0, \pi],
+\end{equation}
+图 12 展示了我们提出的 DaPINN 在一维泊松方程上的性能，并与 PINN 进行了比较。Burgers 方程结果的另一个示例如图 13 所示。
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.8\textwidth]{images/Fig_12.png}
+\caption{DaPINN (Guan 等 2023) 在一维泊松方程上的性能}
+\end{figure}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.8\textwidth]{images/Fig_13.png}
+\caption{DaPINN (Guan 等 2023) 在 Burgers 方程上的性能}
+\end{figure}
+
+DaPINN 模型通过扩展网络输入维度，优于 PINN，这使得神经网络能够提取更多信息特征。

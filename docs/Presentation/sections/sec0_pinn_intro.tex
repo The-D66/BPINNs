@@ -1,0 +1,86 @@
+\section{背景知识：物理信息神经网络 (PINN)}
+
+\begin{frame}
+    \frametitle{PINN 基本原理}
+    \textbf{核心思想}: 将物理定律（偏微分方程 PDE）作为正则化项加入神经网络的损失函数中，实现数据与物理双驱动。
+    \vspace{0.5cm}
+
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \begin{itemize}
+                \item \textbf{数据驱动}: 拟合稀疏观测数据（边界、初始条件）。
+                \item \textbf{物理驱动}: 最小化 PDE 残差，无需网格。
+                \item \textbf{技术关键}: 自动微分 (Automatic Differentiation) 精确计算导数。
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \begin{block}{通用近似}
+                \[ \hat{u}(x,t) \approx \mathcal{NN}(x,t; \theta) \]
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{数学表述}
+    \textbf{损失函数} $\mathcal{L}$ 由数据误差 $\mathcal{L}_{data}$ 和物理残差 $\mathcal{L}_{PDE}$ 组成：
+
+    \Large
+    \[ \mathcal{L}(\theta) = w_{data}\mathcal{L}_{data} + w_{PDE} \mathcal{L}_{PDE} \]
+    \normalsize
+
+    \vspace{0.3cm}
+    \begin{itemize}
+        \item \textbf{数据损失} (观测值匹配):
+              \[ \mathcal{L}_{data} = \frac{1}{N_d} \sum_{i=1}^{N_d} \| \hat{u}(x_i,t_i) - u_{obs}^i \|^2 \]
+
+        \item \textbf{物理残差} (控制方程 $f(u, u_t, u_x, \dots) = 0$):
+              \[ \mathcal{L}_{PDE} = \frac{1}{N_f} \sum_{j=1}^{N_f} \| f(\hat{u}(x_j,t_j); \frac{\partial \hat{u}}{\partial t}, \nabla \hat{u}) \|^2 \]
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{面临的主要问题}
+    \begin{enumerate}
+        \item \textbf{优化困难 }
+              \begin{itemize}
+                  \item 损失函数不同损失项 ($\mathcal{L}_{data}$ vs $\mathcal{L}_{PDE}$) 梯度量级差异大，难以平衡。需要仔细调参才可以较好训练。
+              \end{itemize}
+              \vspace{0.2cm}
+        \item \textbf{谱偏置 }
+              \begin{itemize}
+                  \item 深度神经网络倾向于优先学习低频函数 (F-Principle)。
+                  \item 难以捕捉高频振荡、剧烈变化的波前或多尺度特征。
+              \end{itemize}
+              \vspace{0.2cm}
+        \item \textbf{因果性缺失}
+              \begin{itemize}
+                  \item 时间演化问题中，标准 PINN 缺乏时间因果性，导致解在整个时空域同时收敛，而非按时间推进。
+              \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}
+    \frametitle{常用改进方法}
+    针对上述问题，学术界提出了多种改进方案：
+    \begin{table}
+        \centering
+        \small
+        \begin{tabular}{l|l}
+            \toprule
+            \textbf{改进方向} & \textbf{代表性方法}                              \\
+            \midrule
+            \textbf{特征工程} & \textbf{傅里叶特征嵌入 (Fourier Features)} (解决谱偏置) \\
+                          & 自适应激活函数 (Adaptive Activation Functions)     \\
+            \midrule
+            \textbf{损失加权} & 自适应权重 (Gradient Normalization, SoftAdapt)   \\
+                          & 神经正切核 (Neural Tangent Kernel, NTK) 加权       \\
+            \midrule
+            \textbf{训练策略} & 课程学习 (Curriculum Learning)                  \\
+                          & 因果训练 (Causal Training), 序列到序列学习             \\
+            \midrule
+            \textbf{模型架构} & 区域分解 (XPINNs), 算子学习 (DeepONet, FNO)         \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+\end{frame}

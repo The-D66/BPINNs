@@ -44,8 +44,13 @@ class Storage():
     @property
     def thetas(self):
         thetas = list()
-        for folder in os.listdir(self.path_thetas):
+        # Sort folders to ensure order (theta_001, theta_002...)
+        for folder in sorted(os.listdir(self.path_thetas)):
             folder_path = os.path.join(self.path_thetas, folder)
+            # Skip files like checkpoint_latest.npy
+            if not os.path.isdir(folder_path):
+                continue
+                
             weights = self.__load_list(folder_path, "w", 2)
             biases  = self.__load_list(folder_path, "b", 2)
             theta = list()
@@ -127,9 +132,10 @@ class Storage():
 
     def __load_list(self, path, name, num_len):
         outputs = list()
-        for file_value in os.listdir(path):
+        # Sort files to ensure correct layer order
+        for file_value in sorted(os.listdir(path)):
             if not file_value[:-(1+num_len+4)] == name: continue
-            outputs.append(np.load(os.path.join(self.path_sample, file_value))) 
+            outputs.append(np.load(os.path.join(path, file_value))) 
         return outputs
 
     def __save_list(self, path, name, values, num_len):
@@ -161,11 +167,18 @@ class Storage():
 
     def __save_dict(self, path, name, keys, values):
         
-        shape_np  = (len(keys),len(values[keys[0]]))
-        values_np = np.zeros(shape_np, dtype=np.float32)
+        # Find maximum length
+        max_len = max([len(values[key]) for key in keys])
+        
+        shape_np  = (len(keys), max_len)
+        # Initialize with NaN to handle missing history
+        values_np = np.full(shape_np, np.nan, dtype=np.float32)
 
         for idx, key, in enumerate(keys):
-            values_np[idx,:] = values[key]
+            curr_len = len(values[key])
+            # Fill from the end (assuming chronological order)
+            if curr_len > 0:
+                values_np[idx, -curr_len:] = values[key]
 
         file_path = os.path.join(path, name)
         np.save(file_path, values_np)

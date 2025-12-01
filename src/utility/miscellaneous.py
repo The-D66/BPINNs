@@ -3,8 +3,10 @@ import json
 import os
 import logging
 
-def set_config(default, hard_coded):
-    return default if hard_coded is None else hard_coded
+def set_config(args_config, default_config):
+    if args_config != "default":
+        return "best_models/" + args_config if "/" not in args_config else args_config
+    return default_config
 
 def set_directory():
     """ Sets the working directory """
@@ -19,7 +21,10 @@ def set_warning():
     logging.basicConfig(level=logging.ERROR)
 
 def compute_gui_len():
-    return max(80,int(os.get_terminal_size().columns/2))
+    try:
+        return max(80, os.get_terminal_size().columns - 10) # Use full width minus margin
+    except:
+        return 100 # Default fallback
 
 def starred_print(message):
     gui_len = compute_gui_len()

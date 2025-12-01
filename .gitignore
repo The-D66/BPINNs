@@ -1,6 +1,35 @@
 # User Defined
 **/trash/
 
+# LaTeX intermediate files
+*.aux
+*.log
+*.lof
+*.lot
+*.fls
+*.out
+*.toc
+*.bbl
+*.blg
+*.idx
+*.ind
+*.ilg
+*.upa
+*.nav
+*.snm
+*.vrb
+*.synctex.gz
+*.fdb_latexmk
+_minted*/
+*.dvi
+*.ps
+
+/outs
+
+.DS_Store
+*.npy
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

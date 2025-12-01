@@ -83,7 +83,11 @@ class LossNN(PhysNN):
         if "data_f" in keys: pst["data_f"], llk["data_f"] = self.__loss_data_f(dataset.data_par)
         if "data_b" in keys: pst["data_b"], llk["data_b"] = self.__loss_data_b(dataset.data_bnd)
         if "prior"  in keys: pst["prior"],  llk["prior"]  = self.__loss_prior()
-        if "pde"    in keys: pst["pde"], llk["pde"] = self.__loss_residual(dataset.data_pde) if full_loss else (0.0, 0.0)
+        if "pde"    in keys: 
+            pst["pde"], llk["pde"] = self.__loss_residual(dataset.data_pde) if full_loss else (self.tf_convert(0.0), self.tf_convert(0.0))
+            # Debug print for PDE Loss
+            # if full_loss:
+            #     tf.print(f"DEBUG: PDE MSE in __compute_loss: {pst['pde']}", summarize=-1)
         return pst, llk
 
     def metric_total(self, dataset, full_loss = True):
@@ -97,6 +101,17 @@ class LossNN(PhysNN):
         """ Creation of the dictionary containing all posteriors and log-likelihoods """
         _, llk = self.__compute_loss(dataset, self.keys, full_loss)
         return sum(llk.values())
+
+    def update_active_losses(self, losses_config):
+        """ Update the list of active losses based on a new configuration dictionary """
+        # Handle both boolean strings (from JSON) and booleans
+        def to_bool(v):
+            if isinstance(v, bool): return v
+            if isinstance(v, str): return v.lower() == "true"
+            return False
+
+        self.keys = [k for k,v in losses_config.items() if to_bool(v)]
+        self.metric = self.keys # Keep metrics consistent with active losses for correct logging
 
     def grad_loss(self, dataset, full_loss = True):
         """ Computation of the gradient of the loss function with respect to the network trainable parameters """

@@ -1,0 +1,54 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage[UTF8]{ctex}
+\usepackage{graphicx}
+\usepackage[export]{adjustbox}
+\usepackage{booktabs}
+\usepackage{amsmath}
+
+\usetheme{Madrid}
+\usecolortheme{beaver}
+
+% Adjust margins to maximize image space
+\setbeamersize{text margin left=0.5cm, text margin right=0.5cm}
+
+\title{基于 BPINNs 的圣维南方程求解与不确定性量化}
+\author{景象}
+\date{\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}
+    \frametitle{项目基本情况}
+
+    \begin{enumerate}
+        \item \textbf{目标}: 发展基于 BPINNs 的圣维南方程求解与不确定性量化方法，实现利用有限观测数据对中线工程全线水情进行模拟
+        \item \textbf{监测数据误差大}: 利用水动力模拟结果开展训练
+        \item \textbf{闸门处loss较大}: 仅对渠道进行训练（事后证明渠道模拟只是rmse小，其实才是真正谬误所在）
+        \item \textbf{本次汇报内容}: 最简化圣维南方程，仅拟合矩形河道单一工况加噪声的模拟结果，最后较为成功。
+    \end{enumerate}
+
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{项目演进路线图}
+    \begin{enumerate}
+        \item \textbf{阶段一：原型验证} - 小规模问题，可行性验证。
+        \item \textbf{阶段二：理想基准} - 大规模问题，无噪声验证。
+        \item \textbf{阶段三：噪声挑战} - 引入噪声，暴露双曲型方程弱点。
+        \item \textbf{阶段四：频谱陷阱} - 稳定边界数据后，揭示低频偏差问题。
+        \item \textbf{阶段五：最终方案} - 人工粘性 + 频域特征。
+    \end{enumerate}
+    \vspace{0.5cm}
+    \indent 实际实施的顺序是：3 → 4 → 1 → 5 → 2。
+\end{frame}
+
+\include{sections/sec1}
+\include{sections/sec2}
+\include{sections/sec3}
+\include{sections/sec4}
+\include{sections/sec5}
+
+\end{document}

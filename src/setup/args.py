@@ -48,9 +48,9 @@ class Parser(ArgumentParser):
 
         # Utils
         self.add_argument('--random_seed', type=int,  help='Random seed for np and tf random generator')
-        self.add_argument('--debug_flag' , type=bool, help='Prints general debug utilities at each iteration')
-        self.add_argument('--save_flag'  , type=bool, help='Flag to save results in a new folder')
-        self.add_argument('--gen_flag'   , type=bool, help='Flag for new data generation')
+        self.add_argument('--debug_flag' , type=str, help='Prints general debug utilities at each iteration')
+        self.add_argument('--save_flag'  , type=str, help='Flag to save results in a new folder')
+        self.add_argument('--gen_flag'   , type=str, help='Flag for new data generation')
 
         # %% Algoritm Parameters
         self.add_argument('--epochs', type=int, help='Number of epochs to train')

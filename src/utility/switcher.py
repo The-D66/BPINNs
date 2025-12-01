@@ -21,6 +21,14 @@ def switch_dataset(problem, case_name):
             match case_name:
                 case "cos": return data.Laplace2D_cos()
                 case _ :  raise Exception("This case test does not exist!")
+        case "SaintVenant1D":
+            match case_name:
+                case "simple": return data.SaintVenant1D_simple()
+                case "boundary_pde":
+                    d = data.SaintVenant1D_simple()
+                    d.name = "boundary_pde"
+                    return d
+                case _ : raise Exception("This case test does not exist!")
         case _ : raise Exception(f"This dataset configuration does not exist: {problem}")
 
 def switch_equation(equation):
@@ -29,12 +37,15 @@ def switch_equation(equation):
         case "Laplace1D":  return eq.Laplace
         case "Laplace2D":  return eq.Laplace
         case "Oscillator": return eq.Oscillator
+        case "SaintVenant1D": return eq.SaintVenant
+        case "SaintVenant": return eq.SaintVenant
         case _ : raise Exception(f"This equation does not exist: {equation}")
 
 def switch_configuration(name, test_mode=False):
     test_cases = [None]
     best_cases = [None, "ADAM_lap_2d", "ADAM_pde_osc", "ADAM_reg_osc", "ADAM_reg_cos", "HMC_lap_cos", 
-                "HMC_lap_sin", "HMC_pde_osc", "HMC_reg_cos", "HMC_reg_sin", "SVGD_reg_cos", "VI_reg_cos"]
+                "HMC_lap_sin", "HMC_pde_osc", "HMC_reg_cos", "HMC_reg_sin", "SVGD_reg_cos", "VI_reg_cos",
+                "HMC_sv_1d"]
 
     config_folder = "test_models/" if test_mode else "best_models/"
     config_list   =  test_cases    if test_mode else  best_cases

@@ -16,8 +16,13 @@ class VI(Algorithm):
     
     def __initialize_VI_params(self):
         shape = self.model.nn_params
-        self.VI_mu  = shape.normal(std=0.1)
-        self.VI_rho = shape.normal(std=0.01)
+        self.VI_mu  = shape.copy() # Inherit pre-trained weights!
+        # Initialize rho to small random values. 
+        # sigma = log(1 + exp(rho)). 
+        # If rho ~ N(0, 0.01), sigma ~ 0.69. This is large variance.
+        # If we want sigma small (e.g. 0.01), we need log(exp(0.01)-1) approx log(0.01) = -4.6
+        # Let's initialize rho with a negative mean to start with low variance.
+        self.VI_rho = shape.normal(mean=-5.0, std=0.1)
 
     def __update_theta(self):
         self.eps = self.VI_rho.normal()
