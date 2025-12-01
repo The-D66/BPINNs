@@ -46,6 +46,11 @@ class Trainer():
     if self.params.init is None:
       return
 
+    # Force noiseless data for pre-training
+    print("--- Switching to Noiseless Data for Pre-training ---")
+    self.dataset.reload(add_noise=False)
+    self.dataset.normalize_dataset()
+
     # Update active losses if override exists in init params
     if "losses" in self.params.param_init:
       print(f"Overriding losses for pre-training: {self.params.param_init['losses']}")
@@ -113,6 +118,11 @@ class Trainer():
       print(f"Failed to save cache: {e}")
 
   def train(self):
+    # Force noisy data for fine-tuning (if configured in params)
+    print("--- Switching to Noisy Data for Fine-tuning ---")
+    self.dataset.reload(add_noise=True)
+    self.dataset.normalize_dataset()
+
     # Update active losses: use method-specific override or restore default
     if "losses" in self.params.param_method:
       print(f"Overriding losses for training: {self.params.param_method['losses']}")

@@ -18,6 +18,14 @@ class Dataset:
         if self.add_noise: # Only add noise if add_noise is True
             self.__add_noise()
 
+    def reload(self, add_noise=True):
+        """ Reload dataset with option to toggle noise """
+        self.add_noise = add_noise
+        self.__load_dataset() 
+        self.__compute_norm_coeff()
+        if self.add_noise:
+            self.__add_noise()
+
     def __load_dataset(self):
         self.path = os.path.join("../data", self.problem)
         self.path = os.path.join(self.path, self.name_example)
