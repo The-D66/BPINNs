@@ -24,16 +24,15 @@ def check_coverage():
 
     # Manually select High Quality Runs (FFE + Viscosity + Balanced Weights)
     target_folders_names = [
-        'HMC_2025.11.28-16.43.57', # Run 7
-        'HMC_2025.11.28-18.33.43', # Run 9
-        'HMC_2025.11.28-19.12.16'  # Run 10
+        'HMC_2025.12.01-12.38.01' 
     ]
     
+    base_path = "../outs/SaintVenant1D/internal_pde"
     target_folders = [os.path.join(base_path, f) for f in target_folders_names]
     print(f"Loading samples from {len(target_folders)} chains: {target_folders_names}")
 
     # Load Config used for that run
-    config_file = "best_models/HMC_sv_1d_short"
+    config_file = "best_models/HMC_sv_1d_internal"
     config = load_json(config_file)
 
     # Dummy Args

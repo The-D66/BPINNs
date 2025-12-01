@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 import sys
@@ -10,26 +12,14 @@ from utility import set_directory
 def analyze_loss():
     set_directory()
     
-    # Find latest HMC run
-    # Always search in parent directory for timestamped folders
-    parent_path = "../outs/SaintVenant1D/SaintVenant1D"
+    # Use the specific folder provided by the user
+    path_folder = "../outs/SaintVenant1D/boundary_pde/ADAM_2025.12.01-11.47.32"
     
-    if not os.path.exists(parent_path):
-        print(f"Parent path not found: {parent_path}")
+    if not os.path.exists(path_folder):
+        print(f"Path not found: {path_folder}")
+        # Fallback search logic (optional, or just return)
         return
 
-    # Get full paths and filter only directories starting with HMC
-    folders = [os.path.join(parent_path, f) for f in os.listdir(parent_path) if f.startswith("HMC")]
-    folders = [f for f in folders if os.path.isdir(f) and not f.endswith("/HMC") and not f.endswith(os.sep + "HMC")]
-    
-    if not folders:
-        print("No HMC output found.")
-        return
-        
-    # Get newest folder by modification time
-    latest_folder = sorted(folders, key=os.path.getmtime)[-1]
-    path_folder = latest_folder
-    print(f"Detected latest folder: {path_folder}")
     print(f"Analyzing results in: {path_folder}")
     
     path_log = os.path.join(path_folder, "log")

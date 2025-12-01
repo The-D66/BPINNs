@@ -2,13 +2,12 @@ import numpy as np
 import os
 import sys
 from scipy.interpolate import RegularGridInterpolator
+from scipy.stats import qmc
 
-# Manually define the generation logic to avoid threading/GUI issues in DataGenerator
-
-def create_boundary_pde_dataset_manual():
+def create_internal_pde_dataset():
     # 1. Setup Paths
     problem = "SaintVenant1D"
-    case_name = "boundary_pde"
+    case_name = "internal_pde"
     
     base_dir = os.path.join("data", problem)
     if not os.path.exists(base_dir):
@@ -26,8 +25,7 @@ def create_boundary_pde_dataset_manual():
         
     print(f"Generating dataset in: {save_path}")
 
-    # 2. Load Exact Solution for Ground Truth (Bnd and Test)
-    # Re-implementing logic from SaintVenant1D_simple.values
+    # 2. Load Exact Solution (Same logic as before)
     path_raw = "data_raw"
     try:
         h_hist = np.load(os.path.join(path_raw, "h_history.npy"))
@@ -43,13 +41,9 @@ def create_boundary_pde_dataset_manual():
         h_hist_crop = h_hist[start_idx:, :]
         u_hist_crop = u_hist[start_idx:, :]
         
-        # Physical Parameters
         L = 10000.0
-        T = 14400.0 # Physics time
+        T = 14400.0
         
-        # Interpolators
-        # t_norm in [0, 1], x_norm in [0, 1]
-        # data grid: t_grid_crop [0, ~14400], x_grid [0, 10000]
         t_norm_grid = t_grid_crop / T
         x_norm_grid = x_grid / L
         
@@ -57,35 +51,28 @@ def create_boundary_pde_dataset_manual():
         interp_u = RegularGridInterpolator((t_norm_grid, x_norm_grid), u_hist_crop, bounds_error=False, fill_value=None)
         
         def get_exact(x_norm, t_norm):
-            # x_norm, t_norm are 1D arrays of same length
             pts = np.stack((t_norm, x_norm), axis=1)
             h = interp_h(pts)
             u = interp_u(pts)
-            return np.stack([h, u], axis=1) # (N, 2)
+            return np.stack([h, u], axis=1)
 
     except Exception as e:
-        print(f"Error loading raw data: {e}. Using dummy data.")
-        def get_exact(x_norm, t_norm):
-            return np.zeros((len(x_norm), 2))
+        print(f"Error loading raw data: {e}. Using dummy.")
+        def get_exact(x_norm, t_norm): return np.zeros((len(x_norm), 2))
 
     # 3. Generate Data
     
-    # A. Empty Internal Solutions (sol & par)
+    # A. Empty Internal Solutions (Unsupervised)
     np.save(os.path.join(save_path, "dom_sol.npy"), np.zeros((0, 2)))
     np.save(os.path.join(save_path, "sol_train.npy"), np.zeros((0, 2)))
     np.save(os.path.join(save_path, "dom_par.npy"), np.zeros((0, 2)))
-    np.save(os.path.join(save_path, "par_train.npy"), np.zeros((0, 0))) # 0 columns for par
+    np.save(os.path.join(save_path, "par_train.npy"), np.zeros((0, 0)))
     
-    # B. Boundary Data (dom_bnd, sol_bnd)
-    # x=0, x=1 for t in [0,1]. Initial condition t=0 usually treated as boundary in PINNs
+    # B. Boundary Data
     n_bnd = 512
     t_vals = np.linspace(0, 1, n_bnd)
-    
-    # Left (x=0)
     bnd_left = np.stack([np.zeros(n_bnd), t_vals], axis=1)
-    # Right (x=1)
     bnd_right = np.stack([np.ones(n_bnd), t_vals], axis=1)
-    # Initial (t=0)
     x_vals = np.linspace(0, 1, n_bnd)
     bnd_init = np.stack([x_vals, np.zeros(n_bnd)], axis=1)
     
@@ -95,40 +82,31 @@ def create_boundary_pde_dataset_manual():
     np.save(os.path.join(save_path, "dom_bnd.npy"), dom_bnd)
     np.save(os.path.join(save_path, "sol_bnd.npy"), sol_bnd)
     
-    # C. PDE Points (dom_pde) - RESTRICTED TO BOUNDARY
-    # We reuse dom_bnd points, maybe denser
-    n_pde = 2000 # Total PDE points
-    # Resample or generate new
-    t_pde = np.random.uniform(0, 1, n_pde // 3)
-    x_pde_init = np.random.uniform(0, 1, n_pde // 3)
+    # C. PDE Points - FULL DOMAIN (Sobol Sequence)
+    n_pde = 10000
+    sampler = qmc.Sobol(d=2, scramble=True)
+    dom_pde = sampler.random(n_pde) # [0,1]^2
     
-    pde_left = np.stack([np.zeros_like(t_pde), t_pde], axis=1)
-    pde_right = np.stack([np.ones_like(t_pde), t_pde], axis=1)
-    pde_init = np.stack([x_pde_init, np.zeros_like(x_pde_init)], axis=1)
-    
-    dom_pde = np.concatenate([pde_left, pde_right, pde_init], axis=0)
-    np.random.shuffle(dom_pde)
+    # Add boundary points to PDE set too for stability
+    dom_pde = np.concatenate([dom_pde, dom_bnd], axis=0)
     
     np.save(os.path.join(save_path, "dom_pde.npy"), dom_pde)
-    print(f"Generated {len(dom_pde)} PDE points on the boundary.")
+    print(f"Generated {len(dom_pde)} PDE points (Internal + Boundary).")
     
-    # D. Test Data (dom_test, sol_test, par_test)
-    # Grid for plotting
-    nx_test = 128
-    nt_test = 128
+    # D. Test Data
+    nx_test = 128; nt_test = 128
     x_line = np.linspace(0, 1, nx_test)
     t_line = np.linspace(0, 1, nt_test)
     X_test, T_test = np.meshgrid(x_line, t_line)
-    
     dom_test = np.stack([X_test.flatten(), T_test.flatten()], axis=1)
     sol_test = get_exact(dom_test[:, 0], dom_test[:, 1])
-    par_test = np.zeros((len(sol_test), 0)) # 0 columns for par
+    par_test = np.zeros((len(sol_test), 0))
     
     np.save(os.path.join(save_path, "dom_test.npy"), dom_test)
     np.save(os.path.join(save_path, "sol_test.npy"), sol_test)
     np.save(os.path.join(save_path, "par_test.npy"), par_test)
     
-    print("Manual dataset generation complete.")
+    print("Dataset generation complete.")
 
 if __name__ == "__main__":
-    create_boundary_pde_dataset_manual()
+    create_internal_pde_dataset()

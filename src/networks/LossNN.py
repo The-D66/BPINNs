@@ -63,6 +63,14 @@ class LossNN(PhysNN):
             tape.watch(inputs)
             u, f = self.forward(inputs)
             residuals = self.pinn.comp_residual(inputs, u, f, tape)
+        
+        # Causal Training: Weight residuals by exp(-lambda * t)
+        # This forces the model to learn temporal evolution causally from t=0
+        t_norm = inputs[:, 1:2]
+        lambda_causal = 5.0
+        causal_weight = tf.exp(-0.5 * lambda_causal * t_norm)
+        residuals = residuals * causal_weight
+
         mse = self.__mse(residuals)
         log_var =  tf.math.log(1/self.vars["pde"]**2)
         log_res = self.__normal_loglikelihood(mse, inputs.shape[0], log_var)

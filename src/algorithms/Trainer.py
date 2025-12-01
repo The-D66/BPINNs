@@ -134,10 +134,20 @@ class Trainer():
         base_path = os.path.dirname(self.plotter.path_plot)
         ckpt_path = os.path.join(base_path, "checkpoints", "checkpoint_latest.npy")
         
+        # Check for local checkpoint first, then global fixed checkpoint
+        fixed_path = f"../pretrained_models/checkpoint_latest_{self.params.problem}_{self.params.case_name}.npy"
+        
+        load_path = None
         if os.path.exists(ckpt_path):
-            print(f"Resuming training from checkpoint: {ckpt_path}")
+            load_path = ckpt_path
+        elif os.path.exists(fixed_path):
+            load_path = fixed_path
+            
+        if load_path:
+            print(f"Resuming training from checkpoint: {load_path}")
             try:
-                loaded_values = np.load(ckpt_path, allow_pickle=True)
+                loaded_values = np.load(load_path, allow_pickle=True)
+                # Convert numpy arrays back to tensors
                 theta_values = [tf.convert_to_tensor(v, dtype=tf.float32) for v in loaded_values]
                 alg.model.nn_params = Theta(theta_values)
                 print("Checkpoint loaded successfully.")

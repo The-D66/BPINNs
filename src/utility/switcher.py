@@ -21,12 +21,16 @@ def switch_dataset(problem, case_name):
             match case_name:
                 case "cos": return data.Laplace2D_cos()
                 case _ :  raise Exception("This case test does not exist!")
-        case "SaintVenant1D":
+        case "SaintVenant1D" | "SaintVenantHamiltonian":
             match case_name:
                 case "simple": return data.SaintVenant1D_simple()
                 case "boundary_pde":
                     d = data.SaintVenant1D_simple()
                     d.name = "boundary_pde"
+                    return d
+                case "internal_pde":
+                    d = data.SaintVenant1D_simple()
+                    d.name = "internal_pde"
                     return d
                 case _ : raise Exception("This case test does not exist!")
         case _ : raise Exception(f"This dataset configuration does not exist: {problem}")
@@ -39,6 +43,7 @@ def switch_equation(equation):
         case "Oscillator": return eq.Oscillator
         case "SaintVenant1D": return eq.SaintVenant
         case "SaintVenant": return eq.SaintVenant
+        case "SaintVenantHamiltonian": return eq.SaintVenantHamiltonian
         case _ : raise Exception(f"This equation does not exist: {equation}")
 
 def switch_configuration(name, test_mode=False):

@@ -22,7 +22,7 @@ class Dataset:
         self.path = os.path.join("../data", self.problem)
         self.path = os.path.join(self.path, self.name_example)
         load = lambda name : np.load(os.path.join(self.path,name), allow_pickle=True)
-        self.__data_all = {name[:-4]: load(name) for name in os.listdir(self.path)}
+        self.__data_all = {name[:-4]: load(name) for name in os.listdir(self.path) if name.endswith(".npy")}
 
     @property
     def data_all(self):

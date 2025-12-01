@@ -300,6 +300,36 @@ class Algorithm(ABC):
         except Exception as e:
           print(f"\n[Warning] Plotting failed at epoch {i+1}: {e}")
 
+    # Force save checkpoint at the end of training loop
+    if hasattr(self, 'plotter') and self.plotter is not None:
+        try:
+            base_path = os.path.dirname(self.plotter.path_plot)
+            ckpt_dir = os.path.join(base_path, "checkpoints")
+            if not os.path.exists(ckpt_dir):
+                os.makedirs(ckpt_dir)
+            ckpt_path = os.path.join(ckpt_dir, "checkpoint_latest.npy")
+            
+            numpy_values = []
+            for v in self.model.nn_params.values:
+                if hasattr(v, 'numpy'):
+                    numpy_values.append(v.numpy())
+                else:
+                    numpy_values.append(np.array(v))
+            np.save(ckpt_path, np.array(numpy_values, dtype=object))
+            print(f"Final checkpoint saved to: {ckpt_path}")
+            
+            # Also save to fixed path for easy resumption
+            if hasattr(self, 'data_config'):
+                fixed_dir = "../pretrained_models"
+                if not os.path.exists(fixed_dir):
+                    os.makedirs(fixed_dir)
+                fixed_path = os.path.join(fixed_dir, f"checkpoint_latest_{self.data_config.problem}_{self.data_config.name}.npy")
+                np.save(fixed_path, np.array(numpy_values, dtype=object))
+                print(f"Final checkpoint also saved to: {fixed_path}")
+                
+        except Exception as e:
+            print(f"Failed to save final checkpoint: {e}")
+
     # Denormalizing dataset
     self.data_train.denormalize_dataset()
     # Select which thetas must be saved
