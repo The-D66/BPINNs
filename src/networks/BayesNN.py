@@ -27,3 +27,12 @@ class BayesNN(PredNN, LossNN):
         for key in self.metric + ["Total"]: 
             self.history[0][key].append(new_losses[0][key])
             self.history[1][key].append(new_losses[1][key])
+
+    def update_active_losses(self, losses_config):
+        """ Override to sync history dict when active losses change """
+        super().update_active_losses(losses_config)
+        # Ensure all new metrics have entries in history
+        for key in self.metric + ["Total"]:
+            if key not in self.history[0]:
+                self.history[0][key] = list()
+                self.history[1][key] = list()

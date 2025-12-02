@@ -1,5 +1,7 @@
+import numpy as np
 import tensorflow as tf
 from networks.Theta import Theta
+from networks.OperatorNN import SaintVenantOperator
 
 class CoreNN():
 
@@ -14,6 +16,8 @@ class CoreNN():
     """
 
     def __init__(self, par):
+        self.par = par # Store params for operator mode
+        self.operator_mode = par.architecture.get("operator_mode", False)
 
         # Domain dimensions
         self.n_inputs  = par.comp_dim.n_input
@@ -45,6 +49,10 @@ class CoreNN():
     @property
     def nn_params(self):
         """ Getter for nn_params property """
+        # For OperatorNN, we rely on its own property or trainable_variables
+        if self.operator_mode:
+             return self.model.nn_params
+             
         weights = [layer.get_weights()[0] for layer in self.model.layers]
         biases  = [layer.get_weights()[1] for layer in self.model.layers]
         theta = list()
@@ -56,6 +64,10 @@ class CoreNN():
     @nn_params.setter
     def nn_params(self, theta):
         """ Setter for nn_params property """
+        if self.operator_mode:
+            self.model.nn_params = theta
+            return
+
         for layer, weight, bias in zip(self.model.layers, theta.weights, theta.biases):
             layer.set_weights((weight,bias))
 
@@ -67,6 +79,16 @@ class CoreNN():
         """
         # Set random seed for inizialization
         tf.random.set_seed(seed)
+        
+        if self.operator_mode:
+            model = SaintVenantOperator(self.par)
+            # Dummy forward pass to initialize variables
+            # BC: (1, 10, 4), IC: (1, 10, 2), Query: (1, 2)
+            dummy_bc = tf.zeros((1, 10, 4))
+            dummy_ic = tf.zeros((1, 10, 2))
+            dummy_query = tf.zeros((1, 2))
+            _ = model([dummy_bc, dummy_ic, dummy_query])
+            return model
         
         # Determine Input Shape
         if self.use_fourier:
@@ -103,6 +125,11 @@ class CoreNN():
         inputs : np array  (n_samples, n_input)
         output : tf tensor (n_samples, n_out_sol+n_out_par)
         """
+        if self.operator_mode:
+            # For OperatorNN, inputs is a list [bc, ic, query]
+            # No tensor conversion needed here, handled by model or caller
+            return self.model(inputs)
+
         x = tf.convert_to_tensor(inputs, dtype=tf.float32)
         
         if self.use_fourier:

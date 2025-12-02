@@ -20,6 +20,8 @@ class PhysNN(CoreNN):
     @staticmethod
     def tf_convert(tensor): 
         """ Conversion of a numpy array to tensor """
+        if isinstance(tensor, (list, tuple)):
+            return [tf.cast(t, dtype=tf.float32) for t in tensor]
         return tf.cast(tensor, dtype=tf.float32)
 
     def forward(self, inputs):

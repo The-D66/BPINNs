@@ -56,6 +56,11 @@ class LossNN(PhysNN):
         log_var = tf.math.log(1/self.vars["bnd"]**2)
         return self.__loss_data(outputs[0], data["sol"], log_var)
 
+    def __get_n_samples(self, inputs):
+        if isinstance(inputs, (list, tuple)):
+            return inputs[-1].shape[0]
+        return inputs.shape[0]
+
     def __loss_residual(self, data):
         """ Physical loss; computation of the residual of the PDE """
         inputs = self.tf_convert(data["dom"])
@@ -66,14 +71,20 @@ class LossNN(PhysNN):
         
         # Causal Training: Weight residuals by exp(-lambda * t)
         # This forces the model to learn temporal evolution causally from t=0
-        t_norm = inputs[:, 1:2]
+        # Handle Operator inputs: t is in inputs[-1] (query points [x, t]) or inputs (if not list)
+        if isinstance(inputs, (list, tuple)):
+            t_norm = inputs[-1][:, 1:2]
+        else:
+            t_norm = inputs[:, 1:2]
+            
         lambda_causal = 5.0
         causal_weight = tf.exp(-0.5 * lambda_causal * t_norm)
         residuals = residuals * causal_weight
 
         mse = self.__mse(residuals)
         log_var =  tf.math.log(1/self.vars["pde"]**2)
-        log_res = self.__normal_loglikelihood(mse, inputs.shape[0], log_var)
+        n_samples = self.__get_n_samples(inputs)
+        log_res = self.__normal_loglikelihood(mse, n_samples, log_var)
         return mse, log_res
 
     def __loss_prior(self):

@@ -45,6 +45,12 @@ class SaintVenant(Equation):
     self.norm["u_std"] = to_tf(norm["sol_std"][1])
 
   def comp_residual(self, inputs, out_sol, out_par, tape):
+    # Handle Operator Learning inputs (list: [bc, ic, query])
+    if isinstance(inputs, (list, tuple)):
+        inputs_for_grad = inputs[-1] # Query points [x, t]
+    else:
+        inputs_for_grad = inputs
+
     # Unpack solution: out_sol should be [h_norm, u_norm] (normalized)
     # inputs should be [x_norm, t_norm] (normalized [0,1])
 
@@ -62,8 +68,8 @@ class SaintVenant(Equation):
 
     # Gradients Calculation
     # gradient_scalar returns [d/dx_norm, d/dt_norm]
-    grad_h_norm = Operators.gradient_scalar(tape, h_norm, inputs)
-    grad_u_norm = Operators.gradient_scalar(tape, u_norm, inputs)
+    grad_h_norm = Operators.gradient_scalar(tape, h_norm, inputs_for_grad)
+    grad_u_norm = Operators.gradient_scalar(tape, u_norm, inputs_for_grad)
 
     # Unpack normalized gradients
     # grad is (N, 2). col 0 is d/dx*, col 1 is d/dt*
@@ -75,7 +81,7 @@ class SaintVenant(Equation):
     # Artificial Viscosity: Need u_xx
     # Only calculate if viscosity > 0 to save compute
     if self.viscosity > 0:
-        grad_u_x_norm = Operators.gradient_scalar(tape, u_x_norm, inputs)
+        grad_u_x_norm = Operators.gradient_scalar(tape, u_x_norm, inputs_for_grad)
         u_xx_norm = grad_u_x_norm[:, 0:1]
         u_xx = u_xx_norm * u_sigma * self.inv_L_sq
     else:

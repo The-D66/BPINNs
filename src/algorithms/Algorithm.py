@@ -89,14 +89,64 @@ class Algorithm(ABC):
         x_col = np.full(num_t, x_norm_val)
         query_points = np.stack([x_col, t_norm], axis=1)
 
-        preds = self.model.mean_and_std(query_points)
+        # Handle Operator Mode Inputs
+        if getattr(self.data_train, "operator_mode", False):
+            # Use Case 0 for visualization
+            # BC/IC: (1, T, 4), (1, X, 2)
+            # We need to repeat them for num_t points
+            bc_case0 = tf.convert_to_tensor(self.data_train.raw_bc[0:1], dtype=tf.float32)
+            ic_case0 = tf.convert_to_tensor(self.data_train.raw_ic[0:1], dtype=tf.float32)
+            
+            bc_batch = tf.repeat(bc_case0, num_t, axis=0)
+            ic_batch = tf.repeat(ic_case0, num_t, axis=0)
+            query_batch = tf.convert_to_tensor(query_points, dtype=tf.float32)
+            
+            inputs_plot = [bc_batch, ic_batch, query_batch]
+            preds = self.model.mean_and_std(inputs_plot)
+            
+            # Exact solution from field_data (Interpolation is hard, let's pick nearest x index)
+            # field_data: (N, Nt, Nx, 2)
+            # We need to find x index corresponding to x_norm_val
+            # x_grid is stored in raw dataset but not easily accessible here unless we load it.
+            # Assuming Nx=128, x is linspace.
+            Nx = self.data_train.raw_ic.shape[1] # From IC shape
+            x_idx = int(x_norm_val * (Nx - 1))
+            x_idx = min(max(x_idx, 0), Nx - 1)
+            
+            # field_data[0, :, x_idx, :] -> (Nt_data, 2)
+            # We need to interpolate to t_norm grid.
+            # For visualization, let's just take the raw field data slice if possible, 
+            # but t_h here is 100 points.
+            # Let's assume field_data time resolution matches or we just plot what we have.
+            # Simpler: Skip exact comparison in real-time plot for Operator Mode to avoid crash,
+            # or use a dummy exact.
+            
+            # Better: Try to load exact from field_data if possible
+            try:
+                # Load field data (N, Nt, Nx, 2)
+                # We assume t_grid in field_data matches simulation
+                field_sol = np.load(os.path.join(self.data_train.path, "field_data.npy"))[0]
+                # field_sol is (Nt_data, Nx, 2)
+                # Resize to (num_t, 2) by simple indexing
+                Nt_data = field_sol.shape[0]
+                t_indices = np.linspace(0, Nt_data-1, num_t).astype(int)
+                
+                sol_slice = field_sol[t_indices, x_idx, :]
+                h_ex = sol_slice[:, 0]
+                u_ex = sol_slice[:, 1]
+            except:
+                h_ex = np.zeros(num_t)
+                u_ex = np.zeros(num_t)
 
-        # Exact values
-        # Need to convert query_points to tensor for data_config.values
-        query_points_tf = tf.constant(query_points.T, dtype=tf.float32)
-        exact_res = self.data_config.values["u"](query_points_tf)
-        h_ex = exact_res[0].flatten()
-        u_ex = exact_res[1].flatten()
+        else:
+            preds = self.model.mean_and_std(query_points)
+
+            # Exact values
+            # Need to convert query_points to tensor for data_config.values
+            query_points_tf = tf.constant(query_points.T, dtype=tf.float32)
+            exact_res = self.data_config.values["u"](query_points_tf)
+            h_ex = exact_res[0].flatten()
+            u_ex = exact_res[1].flatten()
 
         # Training data near this location
         # We need to search in self.data_train.data_bnd/sol["dom"] (normalized)
@@ -277,8 +327,14 @@ class Algorithm(ABC):
           self.plotter.set_subfolder(f"epoch_{i+1}")
 
           # Predict on test domain (normalized inputs)
-          # self.data_train.data_test["dom"] is normalized in place
-          functions = self.model.mean_and_std(self.data_train.data_test["dom"])
+          # Check for Operator Mode and Resolve Inputs for plotting
+          test_dom = self.data_train.data_test["dom"]
+          if getattr(self.data_train, "operator_mode", False):
+              inputs_eval = self.data_train.resolve_operator_inputs(test_dom)
+          else:
+              inputs_eval = test_dom
+
+          functions = self.model.mean_and_std(inputs_eval)
 
           # self.test_data_phys contains physical exact values (backed up in Trainer)
           self.plotter.plot_confidence(self.test_data_phys, functions)

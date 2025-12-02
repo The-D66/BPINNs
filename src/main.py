@@ -2,6 +2,14 @@
 from utility import set_config, set_directory, set_warning, starred_print
 from utility import load_json, check_dataset, create_directories
 from utility import switch_dataset, switch_equation, switch_configuration
+import tensorflow as tf
+
+# Disable GPU to avoid Metal crashes
+try:
+    tf.config.set_visible_devices([], 'GPU')
+    print("GPU disabled for stability.")
+except:
+    pass
 
 # Setup utilities
 set_directory()
@@ -77,9 +85,17 @@ starred_print("DONE")
 # %% Model Evaluation
 
 test_data = dataset.data_test
+dom_eval = test_data["dom"]
+
+# Check for Operator Mode and Resolve Inputs
+if getattr(dataset, "operator_mode", False):
+    inputs_eval = dataset.resolve_operator_inputs(dom_eval)
+else:
+    inputs_eval = dom_eval
+
 print("Computing solutions...")
-functions_confidence = bayes_nn.mean_and_std(test_data["dom"])
-functions_nn_samples = bayes_nn.draw_samples(test_data["dom"])
+functions_confidence = bayes_nn.mean_and_std(inputs_eval)
+functions_nn_samples = bayes_nn.draw_samples(inputs_eval)
 print("Computing errors...")
 errors = bayes_nn.test_errors(functions_confidence, test_data)
 print("Showing errors...")

@@ -1,64 +1,67 @@
 {
 	"general": {
 		"problem": "SaintVenant1D",
-		"case_name": "internal_pde",
+		"case_name": "simple",
 		"init": "ADAM",
 		"method": "HMC"
 	},
 	"num_points": {
-		"sol": 0,
+		"sol": 10000,
 		"par": 0,
-		"bnd": 1536,
-		"pde": 11536
+		"bnd": 0,
+		"pde": 5000
 	},
 	"uncertainty": {
-		"sol": 0.0,
-		"par": 0.0,
+		"sol": 1.0,
+		"par": 1.0,
 		"bnd": 1.0,
-		"pde": 0.001,
-		"noise_h_std_phys": 0.1,
-		"noise_Q_std_phys": 0.2,
+		"pde": 1.0,
+		"noise_h_std_phys": 0.0,
+		"noise_Q_std_phys": 0.0,
 		"weight_std": 1.0
 	},
 	"architecture": {
+		"operator_mode": true,
+        "latent_dim": 128,
 		"activation": "tanh", 
-		"n_layers": 3,
-		"n_neurons": 50
+		"n_layers": 5,
+		"n_neurons": 128
 	},
 	"losses": {
 		"data_u": "False",
 		"data_f": "False",
-		"data_b": "True",
+		"data_b": "False",
 		"pde": "True",
 		"prior": "True"
 	},
 	"metrics": {
-		"data_u": "False",
-		"data_f": "False",
-		"data_b": "True",
-		"pde": "True",
-		"prior": "True"
+		"data_u": "True",
+		"pde": "True"
 	},
 	"utils": {
 		"random_seed": 1234,
 		"debug_flag": "False",
 		"save_flag": "True",
-		"gen_flag": "False"
+		"gen_flag": "True"
 	},
 	"ADAM_0": {
-		"epochs": 10000,
+		"epochs": 2000,
 		"burn_in": 0,
 		"beta_1": 0.9,
 		"beta_2": 0.999,
 		"eps": 1e-8,
-		"lr": 5e-4
+		"lr": 5e-4,
+		"losses": {
+			"data_u": "True",
+			"pde": "True"
+		}
 	},
 	"HMC": {
-		"epochs": 1000,
-		"burn_in": 200,
+		"epochs": 50,
+		"burn_in": 0,
 		"HMC_skip": 10,
 		"HMC_L": 20,
-		"HMC_dt": 2e-4,
+		"HMC_dt": 5e-5,
 		"HMC_eta": 0.05
 	},
 	"physics": {
@@ -68,6 +71,6 @@
 		"Q0": 20.0,
 		"slope": 0.001,
 		"manning": 0.03,
-        "viscosity": 50.0
+        "viscosity": 200.0
 	}
 }

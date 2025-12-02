@@ -272,7 +272,49 @@ class Plotter():
     def plot_losses(self, losses):
         """ Generates the plots of MSE and log-likelihood """
         self.__plot_train(losses[0], "Loss.png"   , "Mean Squared Error")
+        # Duplicate for specific user request
+        self.__save_plot(self.path_plot, "Mean Squared Error.png") 
         self.__plot_train(losses[1], "LogLoss.png", "Loss (Log-Likelihood)")
+        # Rename to match request exactly
+        self.__save_plot(self.path_plot, "Loss (Log-Likelihood).png")
+
+    def plot_all(self, history, data, functions, train_data_for_plot=None, loc_data_list=None, pde_data=None, bnd_data=None, sol_data=None):
+        """ 
+        Unified method to generate all requested plots with error handling 
+        """
+        print("Generating all plots...")
+        
+        # 1. Loss Plots
+        try:
+            if history: self.plot_losses(history)
+        except Exception as e: print(f"Failed to plot losses: {e}")
+
+        # 2. Confidence Plots (u_h.png, u_u.png)
+        try:
+            if data and functions: self.plot_confidence(data, functions)
+        except Exception as e: print(f"Failed to plot confidence: {e}")
+
+        # 3. Full Domain Error (full_domain_error.png)
+        try:
+            if data and functions: self.plot_full_domain_error(data, functions)
+        except Exception as e: print(f"Failed to plot full domain error: {e}")
+
+        # 4. Training Data Distribution (Optional/Debug)
+        try:
+            # Re-use provided data if available
+            if pde_data or bnd_data or sol_data:
+                self.plot_training_data(data, pde_data, bnd_data, sol_data)
+        except Exception as e: print(f"Failed to plot training data dist: {e}")
+
+        # 5. Error Distribution on Training Points (error_distribution_training_points.png)
+        try:
+            if train_data_for_plot: self.plot_error_distribution(train_data_for_plot)
+        except Exception as e: print(f"Failed to plot error distribution: {e}")
+
+        # 6. Time Series (time_series_h.png, time_series_Q.png)
+        try:
+            if loc_data_list: self.plot_time_series(loc_data_list)
+        except Exception as e: print(f"Failed to plot time series: {e}")
 
     def plot_training_data(self, data, pde_data, bnd_data, sol_data):
         """ Plots the distribution of training points (sol, bnd, pde) """
