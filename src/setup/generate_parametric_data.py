@@ -1,171 +1,254 @@
 import numpy as np
 import os
 import sys
-import matplotlib.pyplot as plt
 from tqdm import tqdm
+from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
 
-# Add src to path to import config if needed, though we will be explicit here
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Clawpack imports
+from clawpack import pyclaw
+from clawpack import riemann
 
-def solve_saint_venant_maccormack(L, T_total, Nx, Nt, slope, manning, Q_in_func, h_out_val, h_ic, Q_ic):
+# Add src to path
+sys.path.append(os.path.join(os.getcwd(), 'src'))
+
+def solve_saint_venant_pyclaw(L, T_total, Nx_save, Nt_save, slope, manning, Q_in_func, h_out_val, h_ic_func, u_ic_func):
     """
-    Solves 1D Saint-Venant equations using MacCormack scheme for a SINGLE case.
+    Solves 1D Saint-Venant equations using PyClaw.
     
-    Args:
-        L: Length of domain (m)
-        T_total: Total simulation time (s)
-        Nx: Number of spatial points
-        Nt: Number of time steps
-        slope: Bed slope
-        manning: Manning's roughness coefficient
-        Q_in_func: Function Q_in(t) returning scalar
-        h_out_val: Scalar value for outlet h (fixed)
-        h_ic: Initial condition array for h (shape Nx)
-        Q_ic: Initial condition array for Q (shape Nx)
-        
     Returns:
-        h_field: (Nt, Nx) array
-        u_field: (Nt, Nx) array
-        t_grid: (Nt,) array
+        h_interp: (Nt_save, Nx_save)
+        u_interp: (Nt_save, Nx_save)
+        t_save: (Nt_save,)
     """
-    dx = L / (Nx - 1)
-    dt = T_total / (Nt - 1)
+    
+    # 1. Domain and Grid
+    # Use a finer grid for internal solver to ensure stability and accuracy
+    Nx_pyclaw = max(Nx_save * 2, 200) 
+    x_lower = 0.0
+    x_upper = L
+    
+    x_dim = pyclaw.Dimension(x_lower, x_upper, Nx_pyclaw, name='x')
+    domain = pyclaw.Domain(x_dim)
+    
+    # 2. State
+    num_eqn = 2 # h, hu
+    state = pyclaw.State(domain, num_eqn)
+    
+    # Physics parameters
     g = 9.81
+    state.problem_data['grav'] = g
+    state.problem_data['slope'] = slope
+    state.problem_data['manning'] = manning
     
-    # State variables
-    h = h_ic.copy()
-    Q = Q_ic.copy()
+    # Initial Condition
+    xc = state.grid.x.centers
     
-    # Storage
-    h_field = np.zeros((Nt, Nx))
-    u_field = np.zeros((Nt, Nx))
+    # Evaluate IC functions on grid centers
+    h0 = h_ic_func(xc)
+    u0 = u_ic_func(xc)
     
-    h_field[0, :] = h
-    u_field[0, :] = Q / np.maximum(h, 1e-3)
+    state.q[0, :] = h0
+    state.q[1, :] = h0 * u0 # hu
     
-    t_grid = np.linspace(0, T_total, Nt)
+    # 3. Solver
+    # Use Riemann solver for Shallow Water (Roe)
+    rs = riemann.shallow_roe_with_efix_1D
+    solver = pyclaw.ClawSolver1D(rs)
     
-    # Helper for Source Term
-    def get_source_term(h_curr, Q_curr):
-        h_safe = np.maximum(h_curr, 1e-3)
-        u_curr = Q_curr / h_safe
-        Sf = (manning**2 * u_curr * np.abs(u_curr)) / (h_safe**(4/3))
-        return g * h_safe * (slope - Sf)
+    solver.limiters = pyclaw.limiters.tvd.vanleer
+    
+    # Boundary Conditions
+    # PyClaw uses 0 for lower, 1 for upper
+    solver.bc_lower[0] = pyclaw.BC.custom
+    solver.bc_upper[0] = pyclaw.BC.custom
+    
+    # Custom BC Functions
+    def bc_inlet(state, dim, t, qbc, auxbc, num_ghost):
+        """
+        Inlet BC at x=0.
+        Prescribe Q(t) = Q_in_func(t).
+        Use characteristic variables to find h.
+        """
+        # Ghost cells are qbc[:, :num_ghost]
+        # Interior cells are qbc[:, num_ghost:]
+        
+        # We only need to set ghost cells. 
+        # For simplicity, we can assume zero-gradient for h (or characteristic BC)
+        # and enforce Q. Or use the characteristic invariant.
+        
+        # Simple approach for subcritical flow:
+        # 1. Extrapolate h (zero gradient) -> h_ghost = h_inner
+        # 2. Set hu_ghost = Q_in(t)
+        
+        # Better approach (Characteristic):
+        # R- = u - 2c comes from interior.
+        # Q_in is given.
+        
+        # Interior value (first cell)
+        h_inner = qbc[0, num_ghost]
+        hu_inner = qbc[1, num_ghost]
+        u_inner = hu_inner / h_inner
+        c_inner = np.sqrt(g * h_inner)
+        
+        R_minus = u_inner - 2 * c_inner
+        
+        Q_target = Q_in_func(t)
+        
+        # Solve for h_bnd: Q/h - 2*sqrt(gh) = R_minus
+        # Newton iteration
+        h_bnd = h_inner # Initial guess
+        for _ in range(5):
+            if h_bnd <= 0: h_bnd = 0.01
+            f = (Q_target / h_bnd) - 2 * np.sqrt(g * h_bnd) - R_minus
+            df = -Q_target / (h_bnd**2) - np.sqrt(g / h_bnd)
+            h_bnd = h_bnd - f / df
+            
+        # Set ghost cells
+        # We set all ghost cells to this boundary value
+        qbc[0, :num_ghost] = h_bnd
+        qbc[1, :num_ghost] = Q_target
+        
+    def bc_outlet(state, dim, t, qbc, auxbc, num_ghost):
+        """
+        Outlet BC at x=L.
+        Fixed Level h = h_out_val.
+        """
+        # Interior value (last cell)
+        h_inner = qbc[0, -num_ghost-1]
+        hu_inner = qbc[1, -num_ghost-1]
+        u_inner = hu_inner / h_inner
+        c_inner = np.sqrt(g * h_inner)
+        
+        # Characteristic R+ = u + 2c comes from interior
+        R_plus = u_inner + 2 * c_inner
+        
+        h_target = h_out_val
+        
+        # u_bnd = R_plus - 2*sqrt(g * h_target)
+        u_bnd = R_plus - 2 * np.sqrt(g * h_target)
+        hu_bnd = h_target * u_bnd
+        
+        # Set ghost cells
+        qbc[0, -num_ghost:] = h_target
+        qbc[1, -num_ghost:] = hu_bnd
 
-    for n in range(1, Nt):
-        t_curr = t_grid[n]
+    solver.user_bc_lower = bc_inlet
+    solver.user_bc_upper = bc_outlet
+    
+    # Source Term (Manning Friction + Slope)
+    def step_source(solver, state, dt):
+        """
+        Update state.q with source terms using Euler or Semi-Implicit step.
+        S = g * h * (S0 - Sf)
+        Sf = n^2 * u * |u| / h^(4/3)
+        Momentum equation source: g * h * (S0 - Sf)
+        """
+        h = state.q[0, :]
+        hu = state.q[1, :]
         
-        # --- Predictor Step ---
-        h_p = h.copy()
-        Q_p = Q.copy()
+        # Avoid divide by zero
+        h_safe = np.maximum(h, 1e-3)
+        u = hu / h_safe
         
-        F1 = Q
-        F2 = (Q**2 / np.maximum(h, 1e-3)) + 0.5 * g * h**2
-        S = get_source_term(h, Q)
+        Sf = (manning**2 * u * np.abs(u)) / (h_safe**(4/3))
         
-        # Forward difference
-        h_p[0:-1] = h[0:-1] - (dt/dx) * (F1[1:] - F1[0:-1])
-        Q_p[0:-1] = Q[0:-1] - (dt/dx) * (F2[1:] - F2[0:-1]) + dt * S[0:-1]
+        # Source contribution to momentum
+        # d(hu)/dt = ... + g * h * (S0 - Sf)
+        S_mom = g * h_safe * (slope - Sf)
         
-        # --- Corrector Step ---
-        h_p = np.maximum(h_p, 1e-3)
-        F1_p = Q_p
-        F2_p = (Q_p**2 / np.maximum(h_p, 1e-3)) + 0.5 * g * h_p**2
-        S_p = get_source_term(h_p, Q_p)
+        state.q[1, :] += dt * S_mom
+
+    solver.step_source = step_source
+    solver.source_split = 1 # Strang splitting
+    
+    # 4. Controller
+    controller = pyclaw.Controller()
+    controller.solution = pyclaw.Solution(state, domain)
+    controller.solver = solver
+    controller.tfinal = T_total
+    # To capture dynamics properly and allow interpolation, we output frequent frames
+    # We aim for Nt_save, but PyClaw might need more internal steps.
+    # Let's just output at least Nt_save frames.
+    controller.num_output_times = Nt_save 
+    
+    # Keep frames in memory
+    controller.keep_copy = True
+    
+    # Silence output
+    controller.verbosity = 0
+    
+    # 5. Run
+    status = controller.run()
+    
+    # 6. Extract and Interpolate Data
+    # controller.frames is a list of Solution objects
+    # We want to interpolate to (t_save, x_save)
+    
+    t_save = np.linspace(0, T_total, Nt_save)
+    x_save = np.linspace(0, L, Nx_save)
+    
+    # Collect data from frames
+    t_frames = []
+    h_frames = []
+    u_frames = []
+    
+    for frame in controller.frames:
+        t_frames.append(frame.t)
+        # Interpolate spatially to x_save
+        xc_frame = frame.states[0].grid.x.centers
+        h_frame = frame.states[0].q[0, :]
+        hu_frame = frame.states[0].q[1, :]
+        u_frame = hu_frame / np.maximum(h_frame, 1e-3)
         
-        h_new = np.zeros_like(h)
-        Q_new = np.zeros_like(Q)
+        # Spatial interpolation
+        f_h = interp1d(xc_frame, h_frame, kind='linear', fill_value="extrapolate")
+        f_u = interp1d(xc_frame, u_frame, kind='linear', fill_value="extrapolate")
         
-        # Backward difference
-        h_new[1:] = 0.5 * (h[1:] + h_p[1:] - (dt/dx) * (F1_p[1:] - F1_p[0:-1]))
-        Q_new[1:] = 0.5 * (Q[1:] + Q_p[1:] - (dt/dx) * (F2_p[1:] - F2_p[0:-1]) + dt * S_p[1:])
+        h_frames.append(f_h(x_save))
+        u_frames.append(f_u(x_save))
         
-        # --- Boundary Conditions ---
-        # Inlet (x=0): Q prescribed, h computed via characteristics
-        Q_new[0] = Q_in_func(t_curr)
-        
-        # Characteristic invariant approximation at inlet
-        # R- = u - 2c. From grid 1 to 0.
-        u_1 = Q_new[1]/h_new[1]
-        c_1 = np.sqrt(g*h_new[1])
-        R_minus = u_1 - 2*c_1
-        
-        # Solve for h_0: Q_in/h_0 - 2*sqrt(g*h_0) = R_minus
-        # Newton-Raphson
-        h_guess = h_new[1]
-        for _ in range(3):
-            f = (Q_new[0]/h_guess) - 2*np.sqrt(g*h_guess) - R_minus
-            df = -Q_new[0]/(h_guess**2) - np.sqrt(g/h_guess)
-            h_guess = h_guess - f/df
-        h_new[0] = np.maximum(h_guess, 0.1)
-        
-        # Outlet (x=L): h prescribed (fixed weir/lake), Q computed via characteristics
-        h_new[-1] = h_out_val
-        
-        # Characteristic invariant approximation at outlet
-        # R+ = u + 2c. From grid N-2 to N-1.
-        u_N2 = Q_new[-2]/h_new[-2]
-        c_N2 = np.sqrt(g*h_new[-2])
-        R_plus = u_N2 + 2*c_N2
-        
-        # u_out = R_plus - 2*sqrt(g*h_out)
-        u_out = R_plus - 2*np.sqrt(g*h_new[-1])
-        Q_new[-1] = u_out * h_new[-1]
-        
-        # Update
-        h = h_new
-        Q = Q_new
-        
-        h_field[n, :] = h
-        u_field[n, :] = Q / np.maximum(h, 1e-3)
-        
-    return h_field, u_field, t_grid
+    t_frames = np.array(t_frames)
+    h_frames = np.array(h_frames) # (N_frames, Nx_save)
+    u_frames = np.array(u_frames)
+    
+    # Temporal interpolation to t_save
+    # PyClaw output times might be exactly what we asked for, but let's ensure alignment
+    f_h_t = interp1d(t_frames, h_frames, axis=0, kind='linear', fill_value="extrapolate")
+    f_u_t = interp1d(t_frames, u_frames, axis=0, kind='linear', fill_value="extrapolate")
+    
+    h_interp = f_h_t(t_save)
+    u_interp = f_u_t(t_save)
+    
+    return h_interp, u_interp, t_save
 
 def generate_parametric_dataset(num_samples=50):
-    print(f"Generating {num_samples} parametric samples for Operator Learning...")
+    print(f"Generating {num_samples} parametric samples using PyClaw...")
     
-    # Fixed Physics Parameters
+    # Target Grid
     L = 10000.0
-    T_total = 14400.0 # 4 hours
-    Nx = 128 # Spatial resolution for saved data
-    Nt = 100 # Temporal resolution for saved data (downsample if solver uses finer steps)
+    T_total = 14400.0 
+    Nx = 200
+    Nt = 241 # dt = 60s
     
-    # Solver Grid (Fine for stability)
-    Nx_solver = 200
-    
-    # CFL Check
-    h_max_est = 10.0
-    u_max_est = 5.0
-    c_max = np.sqrt(9.81 * h_max_est)
-    dx = L / (Nx_solver - 1)
-    dt_cfl = 0.5 * dx / (u_max_est + c_max)
-    Nt_solver = int(T_total / dt_cfl) + 1
-    print(f"Solver Grid: Nx={Nx_solver}, Nt={Nt_solver}, dt={dt_cfl:.3f}s")
+    print(f"Grid: Nx={Nx}, Nt={Nt}, dt={T_total/(Nt-1):.2f}s")
     
     slope = 0.001
     manning = 0.03
     
-    # Data Containers
-    # BC: (N, Nt, 4) -> [h_in, u_in, h_out, u_out]
+    # Containers
     bc_data = np.zeros((num_samples, Nt, 4), dtype=np.float32)
-    # IC: (N, Nx, 2) -> [h_0, u_0] (using saved grid Nx)
-    ic_data = np.zeros((num_samples, Nx, 2), dtype=np.float32)
-    # Field: (N, Nt, Nx, 2) -> [h, u]
     field_data = np.zeros((num_samples, Nt, Nx, 2), dtype=np.float32)
     
-    # Sampling Loop
     for i in tqdm(range(num_samples), desc="Simulating"):
-        # 1. Randomize Parameters
-        
-        # Base Flow
+        # Parameters
         h0_base = np.random.uniform(4.0, 6.0)
         Q0_base = np.random.uniform(15.0, 25.0)
         
-        # Inflow Hydrograph (Gaussian Pulse)
-        # Q_in(t) = Q0 + Amp * exp(- (t - t_peak)^2 / (2 * sigma^2) )
-        has_pulse = np.random.rand() > 0.2 # 80% chance of flood wave
+        # Hydrograph
+        has_pulse = np.random.rand() > 0.2
         if has_pulse:
-            amp = np.random.uniform(10.0, 40.0) # Peak increase
+            amp = np.random.uniform(10.0, 40.0)
             t_peak = np.random.uniform(0.2 * T_total, 0.6 * T_total)
             sigma = np.random.uniform(0.05 * T_total, 0.15 * T_total)
         else:
@@ -174,91 +257,65 @@ def generate_parametric_dataset(num_samples=50):
         def Q_in_func(t):
             return Q0_base + amp * np.exp(- (t - t_peak)**2 / (2 * sigma**2))
         
-        # Outlet (Fixed Level for now, could be randomized)
-        h_out_val = h0_base # Simple matching boundary
+        h_out_val = h0_base
         
-        # Initial Condition (Steady state approx + small noise)
-        # Start with uniform
-        h_ic_solver = np.ones(Nx_solver) * h0_base
-        Q_ic_solver = np.ones(Nx_solver) * Q0_base
-        # Add spatial noise (simulating measurement error or non-steady start)
-        h_ic_solver += np.random.normal(0, 0.05, Nx_solver)
-        Q_ic_solver += np.random.normal(0, 0.1, Nx_solver)
+        # Initial Condition Functions
+        # Create a closure to capture randomized noise
+        noise_h = np.random.normal(0, 0.05, 1000) # Pre-generate noise buffer
+        noise_u = np.random.normal(0, 0.1, 1000)
         
-        # 2. Run Solver
-        h_res, u_res, t_solver = solve_saint_venant_maccormack(
-            L, T_total, Nx_solver, Nt_solver, slope, manning, 
-            Q_in_func, h_out_val, h_ic_solver, Q_ic_solver
+        def h_ic_func(x):
+            # Map x to noise buffer indices
+            idx = (x / L * 999).astype(int)
+            return h0_base + noise_h[idx]
+            
+        def u_ic_func(x):
+            idx = (x / L * 999).astype(int)
+            return (Q0_base / h0_base) + noise_u[idx]
+            
+        # Solve
+        h_res, u_res, t_res = solve_saint_venant_pyclaw(
+            L, T_total, Nx, Nt, slope, manning,
+            Q_in_func, h_out_val, h_ic_func, u_ic_func
         )
         
-        # 3. Downsample/Interpolate to saved grid (Nx, Nt)
-        # Time downsampling
-        t_indices = np.linspace(0, Nt_solver-1, Nt).astype(int)
-        h_time_down = h_res[t_indices, :]
-        u_time_down = u_res[t_indices, :]
+        # Store
+        field_data[i, :, :, 0] = h_res
+        field_data[i, :, :, 1] = u_res
         
-        # Spatial downsampling
-        x_indices = np.linspace(0, Nx_solver-1, Nx).astype(int)
-        h_final = h_time_down[:, x_indices]
-        u_final = u_time_down[:, x_indices]
+        # BCs
+        bc_data[i, :, 0] = h_res[:, 0]
+        bc_data[i, :, 1] = u_res[:, 0]
+        bc_data[i, :, 2] = h_res[:, -1]
+        bc_data[i, :, 3] = u_res[:, -1]
         
-        # 4. Store Data
-        
-        # Field
-        field_data[i, :, :, 0] = h_final
-        field_data[i, :, :, 1] = u_final
-        
-        # IC (t=0 snapshot)
-        ic_data[i, :, 0] = h_final[0, :]
-        ic_data[i, :, 1] = u_final[0, :]
-        
-        # BC (x=0 and x=L time series)
-        # Upstream [h(0,t), u(0,t)]
-        bc_data[i, :, 0] = h_final[:, 0]
-        bc_data[i, :, 1] = u_final[:, 0] # Note: u is calculated, Q_in was prescribed. u=Q/h.
-        # Downstream [h(L,t), u(L,t)]
-        bc_data[i, :, 2] = h_final[:, -1]
-        bc_data[i, :, 3] = u_final[:, -1]
-        
-    # 5. Save to Disk
-    save_dir = os.path.join("../data/SaintVenant1D", "parametric_batch")
+    # Save
+    save_dir = os.path.join("data", "SaintVenant1D", "parametric_batch")
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
         
     np.save(os.path.join(save_dir, "bc_data.npy"), bc_data)
-    np.save(os.path.join(save_dir, "ic_data.npy"), ic_data)
     np.save(os.path.join(save_dir, "field_data.npy"), field_data)
     
-    # Save Coordinates
     x_grid = np.linspace(0, L, Nx)
-    t_grid = np.linspace(0, T_total, Nt)
     np.save(os.path.join(save_dir, "x_grid.npy"), x_grid)
-    np.save(os.path.join(save_dir, "t_grid.npy"), t_grid)
+    np.save(os.path.join(save_dir, "t_grid.npy"), t_res)
     
     print(f"Dataset saved to {save_dir}")
-    print(f"Shapes: BC={bc_data.shape}, IC={ic_data.shape}, Field={field_data.shape}")
     
-    # Plot one sample to verify
+    # Verify Plot
     plt.figure(figsize=(12, 5))
     plt.subplot(1, 2, 1)
-    plt.plot(t_grid, bc_data[0, :, 1] * bc_data[0, :, 0], label='Inlet Q')
-    plt.plot(t_grid, bc_data[0, :, 3] * bc_data[0, :, 2], label='Outlet Q')
-    plt.title(f"Sample 0: Hydrographs")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Q (m3/s)")
+    plt.plot(t_res, bc_data[0, :, 1] * bc_data[0, :, 0], label='Inlet Q')
+    plt.title("Sample 0: Hydrograph")
     plt.legend()
     
     plt.subplot(1, 2, 2)
-    plt.imshow(field_data[0, :, :, 0], aspect='auto', origin='lower', 
-               extent=[0, L, 0, T_total])
+    plt.imshow(field_data[0, :, :, 0], aspect='auto', origin='lower', extent=[0, L, 0, T_total])
     plt.colorbar(label='h (m)')
-    plt.title("Sample 0: Water Depth Field")
-    plt.xlabel("x (m)")
-    plt.ylabel("t (s)")
-    
-    plot_path = os.path.join(save_dir, "sample_0_preview.png")
-    plt.savefig(plot_path)
-    print(f"Preview plot saved to {plot_path}")
+    plt.title("Sample 0: Depth")
+    plt.savefig(os.path.join(save_dir, "pyclaw_preview.png"))
+    print("Preview saved.")
 
 if __name__ == "__main__":
-    generate_parametric_dataset(num_samples=50) # Small batch for testing
+    generate_parametric_dataset(50)
