@@ -86,7 +86,7 @@ class ConvFormer(Model):
         self.n_trans = arch.get("n_transformer_layers", 2)
         self.heads = arch.get("n_heads", 4)
         self.window = arch.get("window_size", 120)
-        self.kernel = arch.get("kernel_size", 5)
+        self.kernel = arch.get("kernel_size", 9)
         
         # 1. Spatial Encoder
         self.input_proj = layers.Dense(self.d_model) # Project to latent dim

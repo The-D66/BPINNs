@@ -3,10 +3,12 @@ import numpy as np
 import tensorflow as tf
 
 class WindowDataset:
-    def __init__(self, params):
+    def __init__(self, params, pred_horizon=10, split_ratio=0.9):
         self.params = params
         self.problem = params.problem
         self.window_size = params.architecture.get("window_size", 120)
+        self.pred_horizon = pred_horizon
+        self.split_ratio = split_ratio
         
         # Path to parametric batch data
         self.data_path = os.path.join("data", self.problem, "parametric_batch")
@@ -31,9 +33,16 @@ class WindowDataset:
         print(f"Grid loaded: {self.N_samples} samples, {self.Nt} time steps, {self.Nx} spatial points.")
 
     def __compute_stats(self):
-        self.mean = np.mean(self.field_data, axis=(0, 1, 2))
-        self.std = np.std(self.field_data, axis=(0, 1, 2))
+        # Compute stats only on training split (first split_ratio of samples)
+        n_train = int(self.N_samples * self.split_ratio)
+        train_data = self.field_data[:n_train]
+        
+        print(f"Computing normalization stats on first {n_train} samples...")
+        self.mean = np.mean(train_data, axis=(0, 1, 2))
+        self.std = np.std(train_data, axis=(0, 1, 2))
         self.std[self.std < 1e-6] = 1.0
+        
+        print(f"Mean: {self.mean}, Std: {self.std}")
 
     def normalize(self):
         self.field_data_norm = (self.field_data - self.mean) / self.std
@@ -43,7 +52,12 @@ class WindowDataset:
 
     def __prepare_indices(self):
         indices = []
-        max_start = self.Nt - 1 - self.window_size
+        # Ensure we have enough future steps for pred_horizon
+        max_start = self.Nt - self.window_size - self.pred_horizon
+        
+        if max_start < 0:
+            raise ValueError(f"Sequence length {self.Nt} is too short for window {self.window_size} + horizon {self.pred_horizon}")
+
         for s in range(self.N_samples):
             for t in range(max_start):
                 indices.append((s, t))
@@ -56,7 +70,7 @@ class WindowDataset:
         """
         print(f"Constructing full dataset '{mode}' in RAM...")
         
-        split_idx = int(0.9 * len(self.indices))
+        split_idx = int(self.split_ratio * len(self.indices))
         indices_arr = np.array(self.indices)
         
         if mode == 'train':
@@ -67,9 +81,12 @@ class WindowDataset:
             
         # Pre-allocate arrays to avoid list stacking overhead
         N = len(selected_indices)
+        # Inputs: (N, T_win, Nx, 3)
         inputs = np.zeros((N, self.window_size, self.Nx, 3), dtype=np.float32)
-        targets = np.zeros((N, self.Nx, 2), dtype=np.float32)
-        bcs = np.zeros((N, 4), dtype=np.float32)
+        # Targets: (N, T_horizon, Nx, 2)
+        targets = np.zeros((N, self.pred_horizon, self.Nx, 2), dtype=np.float32)
+        # BCs: (N, T_horizon, 4)
+        bcs = np.zeros((N, self.pred_horizon, 4), dtype=np.float32)
         
         # Boundary Mask (Nx, 1)
         mask_bnd = np.zeros((self.Nx, 1), dtype=np.float32)
@@ -80,20 +97,20 @@ class WindowDataset:
         
         # Fill arrays
         for i, (s, t_start) in enumerate(selected_indices):
-            t_end = t_start + self.window_size
+            t_end_input = t_start + self.window_size
+            t_end_target = t_end_input + self.pred_horizon
             
-            # Field segment (T, Nx, 2)
-            seq = self.field_data_norm[s, t_start:t_end]
+            # Input Sequence
+            seq = self.field_data_norm[s, t_start:t_end_input]
             
-            # Fill Input
             inputs[i, :, :, :2] = seq
             inputs[i, :, :, 2:] = mask_repeated
             
-            # Fill Target
-            targets[i] = self.field_data_norm[s, t_end]
+            # Target Sequence (next pred_horizon steps)
+            targets[i] = self.field_data_norm[s, t_end_input:t_end_target]
             
-            # Fill BC
-            bcs[i] = self.bc_data_norm[s, t_end]
+            # BC Sequence (next pred_horizon steps)
+            bcs[i] = self.bc_data_norm[s, t_end_input:t_end_target]
             
         print(f"Dataset '{mode}' ready. Inputs Shape: {inputs.shape}, Size: {inputs.nbytes / 1e9:.2f} GB")
         
