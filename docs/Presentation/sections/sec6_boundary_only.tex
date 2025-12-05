@@ -1,0 +1,76 @@
+\section{特殊工况：仅边界数据}
+
+\begin{frame}
+\frametitle{特殊工况：无域内数据 (Boundary Data Only)}
+\begin{columns}
+    \begin{column}{0.6\textwidth}
+        \begin{block}{实验设置}
+        \begin{itemize}
+            \item \textbf{数据}: 仅提供初始条件 (IC, $t=0$) 和边界条件 (BC, $x=0, L$) 的观测值。
+            \item \textbf{约束}: 域内仅通过 PDE 残差 ($Res_{PDE} \approx 0$) 进行物理约束。
+        \end{itemize}
+        \end{block}
+
+        \textbf{结果观测 - 水深 (h)}
+        \begin{itemize}
+            \item 预测完全失败。
+            \item 尽管边界条件被强制满足，但波形无法向域内传播。
+            \item 网络坍缩为一个简单的平面解，无法捕捉行波动态。
+        \end{itemize}
+    \end{column}
+
+    \begin{column}{0.4\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\textwidth]{images/res_no_internal_h.png}
+            \caption{水深预测 (仅边界数据)}
+        \end{figure}
+    \end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}
+\frametitle{仅边界数据：时序分析}
+\begin{columns}
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\textwidth]{images/res_no_internal_ts_h.png}
+            \caption{水深 (h) 时序预测}
+        \end{figure}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\textwidth]{images/res_no_internal_ts_q.png}
+            \caption{流量 (Q) 时序预测}
+        \end{figure}
+    \end{column}
+\end{columns}
+\begin{block}{分析}
+模型完全未能捕捉到随时间演化的动态行为，水深和流量的时序曲线都呈现出静态或极度平滑的预测，与真实物理过程严重不符。这进一步印证了仅靠边界数据难以有效求解双曲型 PDE。
+\end{block}
+\end{frame}
+
+\begin{frame}
+\frametitle{失败原因分析}
+\begin{columns}
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\textwidth]{images/res_no_internal_err.png}
+            \caption{全域误差分布}
+        \end{figure}
+    \end{column}
+
+    \begin{column}{0.5\textwidth}
+        \begin{block}{为何 PINN 无法仅靠边界求解双曲方程？}
+        \begin{itemize}
+            \item \textbf{缺乏因果性}: PINN 的 Loss 是空间点上的平均求和。优化器“看不见”时间的先后顺序，无法沿着特征线将边界信息传递到内部。
+            \item \textbf{传播困难}: 对于长时间积分问题，边界信息需要穿越整个时空域。梯度在反向传播中容易消失或被局部极小值阻断。
+            \item \textbf{结论}: 对于圣维南这类双曲系统，仅靠 PDE 约束很难收敛，\textbf{稀疏的内部观测数据是重要的}。
+        \end{itemize}
+        \end{block}
+    \end{column}
+\end{columns}
+\end{frame}

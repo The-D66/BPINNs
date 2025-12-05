@@ -25,6 +25,8 @@ _minted*/
 *.ps
 
 outs
+_output
+outs_remote
 .magi
 .gemini-clipboard
 
