@@ -22,7 +22,7 @@
     "architecture": {
         "d_model": 64,
         "n_conv_layers": 3,
-        "kernel_size": 5,
+        "kernel_size": 9,
         "n_transformer_layers": 2,
         "n_heads": 4,
         "activation": "tanh",
@@ -52,7 +52,7 @@
         "random_seed": 42
     },
     "Seq2Seq": {
-        "epochs": 200,
+        "epochs": 2,
         "batch_size": 8,
         "lr": 1e-3,
         "lambda_data": 1.0,

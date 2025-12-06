@@ -1,3 +1,9 @@
+import tensorflow as tf
+import numpy as np
+import os
+import time
+from verify_rollout import validate_model
+
 class Seq2SeqTrainer:
     def __init__(self, model, params, dataset, output_dir=None):
         self.model = model
@@ -115,7 +121,7 @@ class Seq2SeqTrainer:
         
         # Wrap the entire autoregressive loop in a single GradientTape
         with tf.GradientTape() as tape:
-            for k_step in tf.range(self.pred_horizon):
+            for k_step in range(self.pred_horizon):
                 # Predict one step ahead
                 # model expects (B, W, Nx, 3) -> (B, Nx, 2)
                 pred_norm = self.model(current_inputs) 
