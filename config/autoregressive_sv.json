@@ -52,7 +52,7 @@
         "random_seed": 42
     },
     "Seq2Seq": {
-        "epochs": 2,
+        "epochs": 200,
         "batch_size": 8,
         "lr": 1e-3,
         "lambda_data": 1.0,
