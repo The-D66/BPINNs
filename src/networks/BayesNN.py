@@ -13,6 +13,15 @@ class BayesNN(PredNN, LossNN):
         self.seed    = par.utils["random_seed"]
         self.history = self.__initialize_losses()
         self.constructors = (par, equation)
+        
+        # RLPI: Initialize Policy Network if selected
+        if par.method == "RLPI":
+            from networks.PolicyNN import PolicyNN
+            self.policy_nn = PolicyNN(par)
+            self.lambda_reg = par.utils.get("lambda_reg", 0.0)
+            self.rl_detach_mu = False # Default: do not detach
+        else:
+            self.policy_nn = None
 
     def __initialize_losses(self):
         """ Initializes empty MSE and log-likelihood dictionaries """

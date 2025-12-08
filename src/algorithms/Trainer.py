@@ -2,6 +2,7 @@ from .HMC import HMC
 from .VI import VI
 from .SVGD import SVGD
 from .ADAM import ADAM
+from .RLPI import RLPI
 import numpy as np
 import os
 
@@ -26,6 +27,8 @@ class Trainer():
         return SVGD
       case "VI":
         return VI
+      case "RLPI":
+        return RLPI
       case _:
         raise Exception("This algorithm does not exist!")
 

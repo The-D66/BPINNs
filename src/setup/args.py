@@ -70,3 +70,8 @@ class Parser(ArgumentParser):
         self.add_argument('--VI_samples' , type=float, help="samples: number of samples in VI")
         self.add_argument('--VI_alpha' , type=float, help="alpha: learning rate for GD steps in VI")
 
+        # RLPI
+        self.add_argument('--lambda_reg', type=float, default=0.0, help="L1 regularization coefficient for viscosity in RLPI")
+        self.add_argument('--mu_max', type=float, default=0.1, help="Maximum viscosity value for RLPI")
+        self.add_argument('--rl_warmup', type=int, default=1000, help="Number of warm-up epochs for RLPI")
+

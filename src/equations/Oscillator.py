@@ -27,7 +27,7 @@ class Oscillator(Equation):
         self.norm["u_std"]   = norm["sol_std"]
         self.norm["u_mean"]  = norm["sol_mean"]
 
-    def comp_residual(self, inputs, out_sol, _, tape):
+    def comp_residual(self, inputs, out_sol, _, tape, extra_fields=None):
         x_list = Operators.tf_unpack(out_sol)
         x_tt  = Operators.tf_pack(Operators.laplacian_vector(tape, x_list, inputs))
         x_t   = Operators.tf_pack(Operators.divergence_vector(tape, x_list, inputs))

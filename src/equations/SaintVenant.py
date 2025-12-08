@@ -44,7 +44,7 @@ class SaintVenant(Equation):
     self.norm["h_std"] = to_tf(norm["sol_std"][0])
     self.norm["u_std"] = to_tf(norm["sol_std"][1])
 
-  def comp_residual(self, inputs, out_sol, out_par, tape):
+  def comp_residual(self, inputs, out_sol, out_par, tape, extra_fields=None):
     # Unpack solution: out_sol should be [h_norm, u_norm] (normalized)
     # inputs should be [x_norm, t_norm] (normalized [0,1])
 
@@ -72,32 +72,53 @@ class SaintVenant(Equation):
     u_x_norm = grad_u_norm[:, 0:1]
     u_t_norm = grad_u_norm[:, 1:2]
 
-    # Artificial Viscosity: Need u_xx
-    # Only calculate if viscosity > 0 to save compute
-    if self.viscosity > 0:
-        grad_u_x_norm = Operators.gradient_scalar(tape, u_x_norm, inputs)
-        u_xx_norm = grad_u_x_norm[:, 0:1]
-        u_xx = u_xx_norm * u_sigma * self.inv_L_sq
-    else:
-        u_xx = 0.0
-
     # Convert Gradients to Physical Units
-    # dH/dX = (dH/dh_norm) * (dh_norm/dx_norm) * (dx_norm/dX)
-    # dH/dX = sigma_h * h_x_norm * (1/L)
-
     # Optimization: Use pre-computed inverse constants
     h_x = h_x_norm * h_sigma * self.inv_L
     h_t = h_t_norm * h_sigma * self.inv_T
     u_x = u_x_norm * u_sigma * self.inv_L
     u_t = u_t_norm * u_sigma * self.inv_T
 
+    # --- Artificial Viscosity Logic (RLPI or Standard) ---
+    visc_term_contribution = 0.0
+
+    if extra_fields is not None and "mu" in extra_fields:
+        # RLPI: Dynamic Viscosity mu(x,t)
+        # Term: d/dx ( mu * d(hu)/dx )  (Conservative form)
+        mu = extra_fields["mu"] # (N, 1)
+
+        # Q_x = (hu)_x = h_x u + h u_x
+        Q_x = h_x * u + h * u_x
+        
+        # Viscous Flux = mu * Q_x
+        flux_visc = mu * Q_x
+        
+        # Divergence of Flux: d/dx (flux_visc)
+        # We need gradient w.r.t x (Physical)
+        grad_flux_norm = Operators.gradient_scalar(tape, flux_visc, inputs)
+        flux_x_norm = grad_flux_norm[:, 0:1]
+        
+        # Physical derivative
+        visc_term = flux_x_norm * self.inv_L
+        
+        # Convert to Non-Conservative form contribution: - (1/h) * visc_term
+        # (Assuming momentum eq is u_t + ...)
+        visc_term_contribution = -visc_term / (h + 1e-6)
+
+    elif self.viscosity > 0:
+        # Standard: Constant Viscosity
+        # Term: - nu * u_xx
+        grad_u_x_norm = Operators.gradient_scalar(tape, u_x_norm, inputs)
+        u_xx_norm = grad_u_x_norm[:, 0:1]
+        u_xx = u_xx_norm * u_sigma * self.inv_L_sq
+        visc_term_contribution = -self.viscosity * u_xx
+
     # Physical Equations
     # 1. Continuity Equation: h_t + (hu)_x = 0  => h_t + h_x u + h u_x = 0
     lhs_cont = h_t + (h_x * u + h * u_x)
 
     # 2. Momentum Equation: u_t + u u_x + g h_x + Sf - S0 = 0 (+ viscosity term)
-    # With viscosity: u_t + u u_x + g h_x + g(Sf - S0) - nu * u_xx = 0
-
+    
     # Friction term (Manning): Sf = n^2 * u * |u| / h^(4/3)
     if self.n_manning > 0:
       # Use softplus for smoother gradients
@@ -111,8 +132,7 @@ class SaintVenant(Equation):
       term_forcing = self.g_S0
 
     # Corrected momentum equation residual
-    # Added viscosity term: - nu * u_xx
-    lhs_mom = u_t + u * u_x + self.g * h_x - term_forcing - self.viscosity * u_xx
+    lhs_mom = u_t + u * u_x + self.g * h_x - term_forcing + visc_term_contribution
 
     # Return both residuals concatenated
     return tf.concat([lhs_cont, lhs_mom], axis=1)

@@ -20,6 +20,6 @@ class Equation(ABC):
         self.norm = dict()
 
     @abstractmethod
-    def comp_residual(self, inputs, out_sol, out_par, tape):
+    def comp_residual(self, inputs, out_sol, out_par, tape, extra_fields=None):
         return None
 

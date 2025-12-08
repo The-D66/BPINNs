@@ -55,7 +55,7 @@ class SaintVenantHamiltonian(Equation):
         self.norm["h_std"] = to_tf(norm["sol_std"][0])
         self.norm["u_std"] = to_tf(norm["sol_std"][1])
 
-    def comp_residual(self, inputs, out_sol, out_par, tape):
+    def comp_residual(self, inputs, out_sol, out_par, tape, extra_fields=None):
         # inputs: (N, 2) [x_norm, t_norm]
         
         # 1. Recover Physical Variables

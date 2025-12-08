@@ -30,7 +30,7 @@ class Laplace(Equation):
     self.norm["f_mean"] = norm["par_mean"]
     self.norm["mu_norm"] = self.norm["u_std"] / self.norm["f_std"]
 
-  def comp_residual(self, inputs, out_sol, out_par, tape):
+  def comp_residual(self, inputs, out_sol, out_par, tape, extra_fields=None):
     u_list = Operators.tf_unpack(out_sol)
     lap_u = Operators.laplacian_vector(tape, u_list, inputs)
     lap_u = Operators.tf_pack(lap_u)

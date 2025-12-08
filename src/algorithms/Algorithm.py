@@ -49,6 +49,8 @@ class Algorithm(ABC):
         new_theta = self.sample_theta()
       case "VI":
         new_theta = self.sample_theta()
+      case "RLPI":
+        new_theta = self.sample_theta(self.model.nn_params)
       case _:
         raise Exception("Method not Implemented!")
     self.__update_history(new_theta, type(self).__name__ == "SVGD")

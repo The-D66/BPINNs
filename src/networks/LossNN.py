@@ -1,5 +1,6 @@
 from .PhysNN import PhysNN
 from networks.Theta import Theta
+from equations.Operators import Operators
 import tensorflow as tf
 
 class LossNN(PhysNN):
@@ -62,10 +63,47 @@ class LossNN(PhysNN):
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(inputs)
             u, f = self.forward(inputs)
-            residuals = self.pinn.comp_residual(inputs, u, f, tape)
+            
+            # RLPI Integration
+            extra_fields = {}
+            reg_loss_val = 0.0
+            
+            if getattr(self, "policy_nn", None) is not None:
+                # Unpack solutions for gradients
+                sol_list = Operators.tf_unpack(u)
+                h_norm, u_norm = sol_list[0], sol_list[1]
+                
+                grad_h = Operators.gradient_scalar(tape, h_norm, inputs)
+                grad_u = Operators.gradient_scalar(tape, u_norm, inputs)
+                
+                # Extract spatial gradients (d/dx is col 0)
+                grad_h_x = grad_h[:, 0:1]
+                grad_u_x = grad_u[:, 0:1]
+                
+                # State: [x, t, h, u, |hx|, |ux|] -> Total 6 dims
+                state = tf.concat([
+                    inputs,
+                    h_norm, u_norm,
+                    tf.abs(grad_h_x), tf.abs(grad_u_x)
+                ], axis=1)
+                
+                mu = self.policy_nn.forward(state)
+                
+                # Detach if required (Solver Phase)
+                if getattr(self, "rl_detach_mu", False):
+                    mu_used = tf.stop_gradient(mu)
+                else:
+                    mu_used = mu
+                    
+                extra_fields["mu"] = mu_used
+                
+                # Regularization (L1 Penalty on mu)
+                # Scaled by N to match log_res scaling
+                reg_loss_val = self.tf_convert(inputs.shape[0]) * getattr(self, "lambda_reg", 0.0) * tf.reduce_mean(tf.abs(mu))
+
+            residuals = self.pinn.comp_residual(inputs, u, f, tape, extra_fields=extra_fields)
         
         # Causal Training: Weight residuals by exp(-lambda * t)
-        # This forces the model to learn temporal evolution causally from t=0
         t_norm = inputs[:, 1:2]
         lambda_causal = 5.0
         causal_weight = tf.exp(-0.5 * lambda_causal * t_norm)
@@ -74,6 +112,10 @@ class LossNN(PhysNN):
         mse = self.__mse(residuals)
         log_var =  tf.math.log(1/self.vars["pde"]**2)
         log_res = self.__normal_loglikelihood(mse, inputs.shape[0], log_var)
+        
+        # Add regularization to the optimization target
+        log_res = log_res + self.tf_convert(reg_loss_val)
+        
         return mse, log_res
 
     def __loss_prior(self):
@@ -121,11 +163,14 @@ class LossNN(PhysNN):
         self.keys = [k for k,v in losses_config.items() if to_bool(v)]
         self.metric = self.keys # Keep metrics consistent with active losses for correct logging
 
-    def grad_loss(self, dataset, full_loss = True):
+    def grad_loss(self, dataset, full_loss = True, variables = None):
         """ Computation of the gradient of the loss function with respect to the network trainable parameters """
+        if variables is None:
+            variables = self.model.trainable_variables
+            
         with tf.GradientTape(persistent=True) as tape:
-            tape.watch(self.model.trainable_variables)
+            # tape.watch(variables) # Removed: Variables are watched automatically
             diff_llk = self.loss_total(dataset, full_loss)
-        grad_thetas = tape.gradient(diff_llk, self.model.trainable_variables)
+        grad_thetas = tape.gradient(diff_llk, variables)
         return Theta(grad_thetas)
 
