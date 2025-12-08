@@ -102,6 +102,12 @@ class Dataset:
         self.norm_coeff["par_mean"] = np.mean(self.data_test["par"], axis=0)
         self.norm_coeff["par_std" ] =  np.std(self.data_test["par"], axis=0)
 
+        # Fix for zero standard deviation (constant fields)
+        for key in ["sol_std", "par_std"]:
+            std = self.norm_coeff[key]
+            # Replace 0 (or close to 0) with 1.0 to avoid division by zero
+            self.norm_coeff[key] = np.where(std < 1e-9, 1.0, std)
+
     def __add_noise(self):
         noise_values_h = None
         noise_values_u = None

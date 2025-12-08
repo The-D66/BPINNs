@@ -380,6 +380,17 @@ class Plotter():
         rmse_h = np.sqrt(np.mean(err_h**2))
         rmse_u = np.sqrt(np.mean(err_u**2))
         
+        # Save data
+        save_data = {
+            "x": x, "h_ex": h_ex, "u_ex": u_ex, "h_nn": h_nn, "u_nn": u_nn,
+            "err_h": err_h, "err_u": err_u, "rmse_h": rmse_h, "rmse_u": rmse_u
+        }
+        save_path = self.path_plot
+        if self.subfolder:
+            save_path = os.path.join(save_path, self.subfolder)
+            if not os.path.exists(save_path): os.makedirs(save_path)
+        np.save(os.path.join(save_path, "full_domain_error_data.npy"), save_data)
+        
         # Reshape
         N = len(h_ex)
         if len(xx) * len(yy) == N:
@@ -444,6 +455,13 @@ class Plotter():
     def plot_error_distribution(self, train_data_for_plot):
         """ Plots the spatial distribution of errors for h and u on training points """
         
+        # Save data
+        save_path = self.path_plot
+        if self.subfolder:
+            save_path = os.path.join(save_path, self.subfolder)
+            if not os.path.exists(save_path): os.makedirs(save_path)
+        np.save(os.path.join(save_path, "error_distribution_train_data.npy"), train_data_for_plot)
+        
         # Unpack data
         x_phys = train_data_for_plot["coords"][:,0] * self.scale_x
         t_phys = train_data_for_plot["coords"][:,1] * self.scale_t
@@ -491,6 +509,14 @@ class Plotter():
         Plots time series of h and Q at specific locations 
         loc_data_list: list of dicts with keys: x_km, t_h, h_ex, h_mean, h_std, Q_ex, Q_mean, Q_std
         """
+        
+        # Save data for later use
+        save_path = self.path_plot
+        if self.subfolder:
+            save_path = os.path.join(save_path, self.subfolder)
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+        np.save(os.path.join(save_path, "time_series_data.npy"), loc_data_list)
         
         num_locs = len(loc_data_list)
         cols = 2
