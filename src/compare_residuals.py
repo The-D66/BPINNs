@@ -150,7 +150,7 @@ def compare_residuals():
         
     print(f"Loading ground truth from: {data_dir}")
     dom_test = np.load(os.path.join(data_dir, "dom_test.npy"))
-    sol_test = np.load(os.path.join(data_dir, "sol_test.npy"), allow_pickle=True)
+    sol_test = np.load(os.path.join(data_dir, "sol_test.npy"), allow_pickle=False)
     
     print(f"DEBUG: sol_test type: {type(sol_test)}")
     print(f"DEBUG: sol_test shape: {getattr(sol_test, 'shape', 'N/A')}")

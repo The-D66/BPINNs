@@ -90,9 +90,16 @@ try:
     if not loaded_thetas_raw:
         print("No HMC samples found in storage. Checking for pre-trained weights...")
         # Fallback to pre-trained if HMC list is empty (e.g. if only pre-training ran)
-        path_pretrained = f"../pretrained_models/pretrained_{params.problem}_{params.case_name}_ADAM.npy"
+        path_pretrained = f"../pretrained_models/pretrained_{params.problem}_{params.case_name}_ADAM.npz"
+        if not os.path.exists(path_pretrained):
+            path_pretrained = f"../pretrained_models/pretrained_{params.problem}_{params.case_name}_ADAM.npy"
+
         if os.path.exists(path_pretrained):
-             loaded_values = np.load(path_pretrained, allow_pickle=True)
+             if path_pretrained.endswith('.npz'):
+                 with np.load(path_pretrained, allow_pickle=False) as data:
+                     loaded_values = [data[f'arr_{i}'] for i in range(len(data.files))]
+             else:
+                 loaded_values = np.load(path_pretrained, allow_pickle=True)
              theta_values = [tf.convert_to_tensor(v, dtype=tf.float32) for v in loaded_values]
              bayes_nn.thetas = [Theta(theta_values)]
              print("Loaded pre-trained weights (1 sample).")

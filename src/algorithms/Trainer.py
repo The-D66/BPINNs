@@ -68,14 +68,15 @@ class Trainer():
     if not os.path.exists(pretrained_dir):
         os.makedirs(pretrained_dir)
         
-    cache_filename = f"pretrained_{self.params.problem}_{self.params.case_name}_{self.params.init}.npy"
+    cache_filename = f"pretrained_{self.params.problem}_{self.params.case_name}_{self.params.init}.npz"
     cache_path = os.path.join(pretrained_dir, cache_filename)
             
     # If cache exists and we are not forcing regeneration
     if os.path.exists(cache_path) and not self.params.utils["gen_flag"]:
       print(f"Loading cached pre-trained weights from {cache_path}...")
       try:
-        loaded_values = np.load(cache_path, allow_pickle=True)
+        with np.load(cache_path, allow_pickle=False) as data:
+            loaded_values = [data[f'arr_{i}'] for i in range(len(data.files))]
         # Convert numpy arrays back to tensors
         theta_values = [
             tf.convert_to_tensor(v, dtype=tf.float32) for v in loaded_values
@@ -112,7 +113,7 @@ class Trainer():
         else:
           numpy_values.append(np.array(v))
 
-      np.save(cache_path, np.array(numpy_values, dtype=object))
+      np.savez(cache_path, *numpy_values)
       print(f"Saved pre-trained weights to {cache_path}")
     except Exception as e:
       print(f"Failed to save cache: {e}")
@@ -142,10 +143,10 @@ class Trainer():
         from networks.Theta import Theta
         
         base_path = os.path.dirname(self.plotter.path_plot)
-        ckpt_path = os.path.join(base_path, "checkpoints", "checkpoint_latest.npy")
+        ckpt_path = os.path.join(base_path, "checkpoints", "checkpoint_latest.npz")
         
         # Check for local checkpoint first, then global fixed checkpoint
-        fixed_path = f"../pretrained_models/checkpoint_latest_{self.params.problem}_{self.params.case_name}.npy"
+        fixed_path = f"../pretrained_models/checkpoint_latest_{self.params.problem}_{self.params.case_name}.npz"
         
         load_path = None
         if os.path.exists(ckpt_path):
@@ -156,7 +157,8 @@ class Trainer():
         if load_path:
             print(f"Resuming training from checkpoint: {load_path}")
             try:
-                loaded_values = np.load(load_path, allow_pickle=True)
+                with np.load(load_path, allow_pickle=False) as data:
+                    loaded_values = [data[f'arr_{i}'] for i in range(len(data.files))]
                 # Convert numpy arrays back to tensors
                 theta_values = [tf.convert_to_tensor(v, dtype=tf.float32) for v in loaded_values]
                 alg.model.nn_params = Theta(theta_values)

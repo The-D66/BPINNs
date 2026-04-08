@@ -170,8 +170,10 @@ def generate_saint_venant_data():
     np.save("data_raw/u_history.npy", u_history)
     np.save("data_raw/x_grid.npy", x_history)
     np.save("data_raw/t_grid.npy", t_history)
-    # Explicitly save config dictionary
-    np.save("data_raw/config.npy", {"L": L, "T_warmup": T_warmup, "T_sim": T_sim_pinn, "T_total_sim": T_total_sim, "S0": slope, "n_manning": manning})
+    # Explicitly save config dictionary as JSON
+    import json
+    with open("data_raw/config.json", "w") as f:
+        json.dump({"L": L, "T_warmup": T_warmup, "T_sim": T_sim_pinn, "T_total_sim": T_total_sim, "S0": float(slope), "n_manning": float(manning)}, f)
     
     print("Data saved to data_raw/")
     

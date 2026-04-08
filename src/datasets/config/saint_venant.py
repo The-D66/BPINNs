@@ -47,7 +47,13 @@ class SaintVenant1D_simple(SaintVenant1D):
             u_hist = np.load(os.path.join(path_raw, "u_history.npy"))
             t_grid = np.load(os.path.join(path_raw, "t_grid.npy"))
             x_grid = np.load(os.path.join(path_raw, "x_grid.npy"))
-            config = np.load(os.path.join(path_raw, "config.npy"), allow_pickle=True).item()
+            config_path = os.path.join(path_raw, "config.json")
+            if os.path.exists(config_path):
+                import json
+                with open(config_path, "r") as f:
+                    config = json.load(f)
+            else:
+                config = np.load(os.path.join(path_raw, "config.npy"), allow_pickle=True).item()
         except Exception as e:
             print(f"Error loading data: {e}")
             return self.dummy_values

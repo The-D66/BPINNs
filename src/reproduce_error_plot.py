@@ -15,7 +15,7 @@ def reproduce_error_plot():
 
     # Load Coordinates (Physical)
     # sol_ex_dom is (N, 2) -> [x, t]
-    dom = np.load(os.path.join(path_data, "sol_ex_dom.npy"), allow_pickle=True)
+    dom = np.load(os.path.join(path_data, "sol_ex_dom.npy"), allow_pickle=False)
     print(f"DEBUG: dom type: {type(dom)}")
     if isinstance(dom, np.ndarray):
         print(f"DEBUG: dom shape: {dom.shape}")
@@ -34,7 +34,7 @@ def reproduce_error_plot():
 
     # Load Exact Solution
     # sol_ex_val is (N, 2) -> [h, u]
-    exact = np.load(os.path.join(path_data, "sol_ex_val.npy"), allow_pickle=True)
+    exact = np.load(os.path.join(path_data, "sol_ex_val.npy"), allow_pickle=False)
     print(f"DEBUG: exact type: {type(exact)}")
     if isinstance(exact, np.ndarray):
         print(f"DEBUG: exact shape: {exact.shape}")
@@ -44,7 +44,7 @@ def reproduce_error_plot():
 
     # Load Predicted Solution
     # sol_NN is (N, 2) -> [h, u]
-    pred = np.load(os.path.join(path_values, "sol_NN.npy"), allow_pickle=True)
+    pred = np.load(os.path.join(path_values, "sol_NN.npy"), allow_pickle=False)
     print(f"DEBUG: pred type: {type(pred)}")
     if isinstance(pred, np.ndarray):
         print(f"DEBUG: pred shape: {pred.shape}")

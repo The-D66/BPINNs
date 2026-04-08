@@ -41,13 +41,20 @@ bayes_nn.f_coeff = dataset.norm_coeff["par_mean"], dataset.norm_coeff["par_std"]
 bayes_nn.norm_coeff = dataset.norm_coeff
 
 # Load Pre-trained Weights
-path_pretrained = "../pretrained_models/pretrained_SaintVenant1D_simple_ADAM.npy"
+path_pretrained = "../pretrained_models/pretrained_SaintVenant1D_simple_ADAM.npz"
 if not os.path.exists(path_pretrained):
-    print("Pre-trained weights not found!")
-    exit()
+    # Try .npy for backward compatibility
+    path_pretrained = "../pretrained_models/pretrained_SaintVenant1D_simple_ADAM.npy"
+    if not os.path.exists(path_pretrained):
+        print("Pre-trained weights not found!")
+        exit()
 
-print("Loading weights...")
-loaded_values = np.load(path_pretrained, allow_pickle=True)
+print(f"Loading weights from {path_pretrained}...")
+if path_pretrained.endswith('.npz'):
+    with np.load(path_pretrained, allow_pickle=False) as data:
+        loaded_values = [data[f'arr_{i}'] for i in range(len(data.files))]
+else:
+    loaded_values = np.load(path_pretrained, allow_pickle=True)
 theta_values = [tf.convert_to_tensor(v, dtype=tf.float32) for v in loaded_values]
 bayes_nn.nn_params = Theta(theta_values)
 

@@ -71,17 +71,23 @@ def plot_loss_distribution():
     # Load Weights
     # Assuming base_path is relative to src: ../outs/...
     # Checkpoint is in checkpoints/
-    ckpt_path = os.path.join(base_path, "checkpoints", "checkpoint_latest.npy")
+    ckpt_path = os.path.join(base_path, "checkpoints", "checkpoint_latest.npz")
     if not os.path.exists(ckpt_path):
         print(f"Checkpoint not found at {ckpt_path}")
         # Fallback to pretrained
-        ckpt_path = "../pretrained_models/pretrained_SaintVenant1D_simple_ADAM.npy"
+        ckpt_path = "../pretrained_models/pretrained_SaintVenant1D_simple_ADAM.npz"
         if not os.path.exists(ckpt_path):
-             print("No weights found.")
-             return
+             ckpt_path = "../pretrained_models/pretrained_SaintVenant1D_simple_ADAM.npy"
+             if not os.path.exists(ckpt_path):
+                 print("No weights found.")
+                 return
 
     print(f"Loading weights from {ckpt_path}...")
-    loaded_values = np.load(ckpt_path, allow_pickle=True)
+    if ckpt_path.endswith('.npz'):
+        with np.load(ckpt_path, allow_pickle=False) as data:
+            loaded_values = [data[f'arr_{i}'] for i in range(len(data.files))]
+    else:
+        loaded_values = np.load(ckpt_path, allow_pickle=True)
     theta_values = [tf.convert_to_tensor(v, dtype=tf.float32) for v in loaded_values]
     bayes_nn.nn_params = Theta(theta_values)
     # Important: Populate thetas list for mean_and_std to work
