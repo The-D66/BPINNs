@@ -1,0 +1,3 @@
+## 2024-04-11 - [Optimize tensor norm and list product operations]
+**Learning:** In TensorFlow operations, calculating the squared sum via `tf.norm(t)**2` incurs a significant performance overhead due to calculating the square root and then squaring it again. Using `tf.add_n([tf.reduce_sum(tf.square(t)) ...])` is much faster. Also, for finding the product of small simple tuples or lists (like tensor shapes), Python's built-in `math.prod` is up to 10x faster than `np.prod` because it avoids array conversion and type casting overhead.
+**Action:** Use `tf.reduce_sum(tf.square(t))` instead of `tf.norm(t)**2` when you only need the squared sum, and use `math.prod` instead of `np.prod` for operations on small python iterables like tensor shapes or bounds.
