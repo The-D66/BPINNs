@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import math
 
 class Theta():
     """ 
@@ -70,10 +71,14 @@ class Theta():
     
     def ssum(self): 
         """ Squared sum of all entries of self.values """
-        return sum([tf.norm(t)**2    for t in self.values])
+        # Performance optimization: use tf.add_n and tf.reduce_sum(tf.square())
+        # which is significantly faster than python sum() over tf.norm()**2
+        return tf.add_n([tf.reduce_sum(tf.square(t)) for t in self.values])
     def size(self): 
         """ Counter of all entries of self.values """
-        return sum([np.prod(t.shape) for t in self.values])
+        # Performance optimization: use math.prod for small, simple tuples (like tensor shapes)
+        # to avoid numpy type conversion overhead
+        return sum([math.prod(t.shape) for t in self.values])
     def copy(self): 
         """ Returns a Theta object with copied self.values """
         return Theta(self.values.copy())
