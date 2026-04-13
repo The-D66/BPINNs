@@ -1,0 +1,3 @@
+## 2024-05-18 - Optimize sum and product operations in Theta and DataGenerator
+**Learning:** Python `sum` combined with `tf.norm(t)**2` is slow compared to `tf.add_n([tf.reduce_sum(tf.square(t))])` which is significantly faster and doesn't compute square roots just to square them again. Additionally, `np.prod` can be slow for small tuples/lists due to NumPy type conversion overhead; using Python's built-in `math.prod` is much faster for these cases.
+**Action:** Always prefer `tf.reduce_sum(tf.square(t))` over `tf.norm(t)**2` and use `tf.add_n` when summing multiple tensors. Also, prefer `math.prod` over `np.prod` for small collections of scalars.
