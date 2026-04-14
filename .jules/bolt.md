@@ -1,0 +1,3 @@
+## 2024-05-24 - Efficient TensorFlow Tensor Operations
+**Learning:** For small tensor shapes, Python's built-in `math.prod` avoids unnecessary type conversion overhead compared to `np.prod`. Additionally, computing the sum of squared norms of multiple tensors is significantly faster using `tf.add_n([tf.reduce_sum(tf.square(t)) ...])` rather than Python's `sum()` combined with `tf.norm(t)**2` because it avoids Python-level loops and leverages optimized graph operations.
+**Action:** When working with tensor collections, use `math.prod` for shape size calculation and prefer pure TensorFlow operations like `tf.add_n` and `tf.reduce_sum(tf.square())` over Python's `sum()` for aggregated tensor norm calculations.
