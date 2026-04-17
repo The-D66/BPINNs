@@ -1,0 +1,3 @@
+## 2026-04-17 - [Optimize Theta class methods ssum and size]
+**Learning:** Using Python's `sum` with `tf.norm(t)**2` is significantly slower than `tf.add_n([tf.reduce_sum(tf.square(t)) ...])` due to avoiding square root calculations inside the norm and doing native tensor addition. Also, `math.prod` is much faster than `np.prod` for small Python tuples (like shapes) because it skips NumPy's array conversion overhead.
+**Action:** Replace `sum` and `tf.norm` for sum of squares with `tf.add_n` and `tf.reduce_sum(tf.square())`. Use `math.prod` instead of `np.prod` for calculating sizes from shape tuples.
