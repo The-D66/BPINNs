@@ -1,0 +1,3 @@
+## 2024-05-24 - [Optimize ssum and size calculations in Theta.py]
+**Learning:** `tf.add_n([tf.reduce_sum(tf.square(t)) ...])` is significantly faster (~4-5x) than `sum([tf.norm(t)**2 ...])` for a list of TensorFlow tensors, likely due to optimized parallel execution in TensorFlow and avoiding the norm computation overhead. For calculating the product of elements in small, simple tuples (like tensor shapes), Python's built-in `math.prod` is much faster (~8x) than `np.prod` as it avoids unnecessary numpy array conversion and type checking overhead.
+**Action:** Use `tf.add_n` with `tf.reduce_sum(tf.square(t))` for summing squared values of tensor lists. Prefer `math.prod` over `np.prod` for small integer tuples like tensor shapes in the Python standard library.
