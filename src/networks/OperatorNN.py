@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import layers, Model
-from networks.Theta import Theta
+from src.networks.Theta import Theta
 
 class FeatureEncoder(layers.Layer): 
     """

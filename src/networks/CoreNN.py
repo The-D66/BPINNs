@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
-from networks.Theta import Theta
-from networks.OperatorNN import SaintVenantOperator
+from src.networks.Theta import Theta
+from src.networks.OperatorNN import SaintVenantOperator
 
 class CoreNN():
 

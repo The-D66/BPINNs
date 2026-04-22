@@ -1,5 +1,5 @@
 from .PhysNN import PhysNN
-from networks.Theta import Theta
+from src.networks.Theta import Theta
 import tensorflow as tf
 
 class LossNN(PhysNN):
