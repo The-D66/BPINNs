@@ -92,7 +92,9 @@ class DataGenerator:
     def __create_multidomain(self, bnd, num, mesh=None):
         " Split multi-domain bnd and call single domain creator "
         if mesh is None: mesh = self.mesh["mesh_type"]
-        dim_dom   = [np.prod([d[1]-d[0] for d in d_bnd]) for d_bnd in bnd] 
+        import math
+        # Performance optimization: Python's math.prod is faster than np.prod for small lists
+        dim_dom   = [math.prod([d[1]-d[0] for d in d_bnd]) for d_bnd in bnd]
         num_dom   = [int((dd*num)//sum(dim_dom)) for dd in dim_dom]
         multi_pts = [self.__create_domain(d_bnd, d_num, mesh) for d_bnd, d_num in zip(bnd, num_dom)]
         pts, num = multi_pts[0], num_dom[0]
