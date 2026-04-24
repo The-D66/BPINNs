@@ -1,0 +1,3 @@
+## 2024-05-24 - Performance Optimizations for lists and tensors
+**Learning:** Using `tf.add_n([tf.reduce_sum(tf.square(t)) for t in ...])` instead of Python`s `sum([tf.norm(t)**2 for t in ...])` avoids an unnecessary square-root and uses a native TensorFlow graph operation which makes the computation faster. Also, using Python`s `math.prod` to calculate the product of small lists (like tensor shapes) is generally faster than using NumPy`s `np.prod` which has a type conversion overhead.
+**Action:** When working with tensor reduction and list product operations, prefer `tf.add_n` + `tf.square` instead of `sum` + `tf.norm`, and `math.prod` over `np.prod` for small pure python iterables.
