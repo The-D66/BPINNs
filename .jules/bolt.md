@@ -1,0 +1,4 @@
+
+## 2024-05-02 - Tensor accumulation bottlenecks
+**Learning:** Python's built-in `sum()` function is extremely inefficient when applied to lists or dictionary values of TensorFlow tensors. It iteratively calls the overloaded `__add__` method, creating an O(N) deep binary tree in the TF computation graph, which dramatically slows down training steps, especially when tracking many loss metrics or operating on large neural network parameter collections (like `Theta` weights).
+**Action:** Always replace `sum([tensor1, tensor2, ...])` with `tf.add_n([tensor1, tensor2, ...])`. When dealing with dynamically populated dictionaries, ensure a fallback exists (`tf.add_n(list(d.values())) if d else tf.constant(0.0)`) to avoid `ValueError` on empty inputs. Additionally, when calculating sum of squared L2 norms, avoid `tf.norm(t)**2` (which computes an unnecessary square root) and use `tf.reduce_sum(tf.square(t))` instead.
