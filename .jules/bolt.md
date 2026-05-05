@@ -1,0 +1,3 @@
+## 2024-05-15 - Optimize Tensor Squared Sums and Simple Products
+**Learning:** In TensorFlow workflows inside this codebase, manually generating an array of `tf.norm(t)**2` and passing it to python's built-in `sum()` is heavily unoptimized and significantly slower than constructing an array of `tf.reduce_sum(tf.square(t))` and wrapping it with `tf.add_n()`. Also, for tiny tuples like shapes, `numpy.prod` introduces huge type-conversion overheads compared to `math.prod`.
+**Action:** Always favor native aggregators like `tf.add_n` when accumulating tensors. Avoid `numpy.prod` in favor of `math.prod` for small integer products (like shape products). Keep empty list fallbacks around `tf.add_n` usage to prevent TF errors.
