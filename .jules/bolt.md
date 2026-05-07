@@ -1,0 +1,4 @@
+
+## 2024-05-20 - [Performance Optimization in Theta Class]
+**Learning:** In a TensorFlow-heavy codebase, relying on native Python functions like `sum()` combined with complex ops like `tf.norm(t)**2` inside list comprehensions creates significant execution overhead and creates potential issues for undefined gradients (when value is zero due to the square root inside `tf.norm`). Moreover, for simple calculations over small tuples like `tensor.shape`, using `np.prod` introduces unnecessary array-conversion overhead.
+**Action:** Replace `sum([tf.norm(t)**2 for t in values])` with `tf.add_n([tf.reduce_sum(tf.square(t)) for t in values]) if values else tf.constant(0.0)` for a much faster, fully-fused graph execution. Replace `np.prod` with Python's built-in `math.prod` for operations over small native structures like tensor shapes.
