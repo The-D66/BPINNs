@@ -31,7 +31,8 @@ class Operators:
     @staticmethod
     def tf_trace(lt):
         """ Computes the trace (in the algebrical sense), but for an input which is a list of column tensors """
-        return tf.expand_dims(sum([v[:,i] for i, v in enumerate(lt)]), axis=-1)
+        # Performance: tf.add_n is faster than Python's sum() for accumulating lists of tensors
+        return tf.expand_dims(tf.add_n([v[:,i] for i, v in enumerate(lt)]) if lt else tf.constant(0.0), axis=-1)
 
     @staticmethod
     def gradient_scalar(tape, s, x):

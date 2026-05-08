@@ -1,0 +1,3 @@
+## 2024-05-15 - Replace Python sum with tf.add_n for lists of tensors
+**Learning:** Python's built-in `sum()` generates numerous intermediate objects and involves considerable overhead when accumulating values across a list of tensors in TensorFlow. Replacing it with TensorFlow's native `tf.add_n()` yields measurable performance improvements (e.g., when summing squared weights or accumulating vectors). However, `tf.add_n` fails when given an empty list.
+**Action:** When accumulating lists of tensors, use `tf.add_n([v for v in tensor_list]) if tensor_list else fallback_value` instead of `sum([v for v in tensor_list])` to boost performance while avoiding empty list exceptions.
