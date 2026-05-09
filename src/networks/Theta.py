@@ -70,10 +70,13 @@ class Theta():
     
     def ssum(self): 
         """ Squared sum of all entries of self.values """
-        return sum([tf.norm(t)**2    for t in self.values])
+        # Performance optimization: tf.add_n + tf.reduce_sum + tf.square is much faster than Python sum + tf.norm**2
+        return tf.add_n([tf.reduce_sum(tf.square(t)) for t in self.values]) if self.values else tf.constant(0.0)
     def size(self): 
         """ Counter of all entries of self.values """
-        return sum([np.prod(t.shape) for t in self.values])
+        import math
+        # Performance optimization: math.prod avoids numpy conversion overhead
+        return sum([math.prod(t.shape) for t in self.values])
     def copy(self): 
         """ Returns a Theta object with copied self.values """
         return Theta(self.values.copy())

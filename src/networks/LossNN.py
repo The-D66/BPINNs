@@ -112,14 +112,14 @@ class LossNN(PhysNN):
     def metric_total(self, dataset, full_loss = True):
         """ Computation of the losses required to be tracked """
         pst, llk = self.__compute_loss(dataset, self.metric, full_loss)
-        pst["Total"] = sum(pst.values())
-        llk["Total"] = sum(llk.values())
+        pst["Total"] = tf.add_n(list(pst.values())) if pst else tf.constant(0.0)
+        llk["Total"] = tf.add_n(list(llk.values())) if llk else tf.constant(0.0)
         return pst, llk
 
     def loss_total(self, dataset, full_loss = True):
         """ Creation of the dictionary containing all posteriors and log-likelihoods """
         _, llk = self.__compute_loss(dataset, self.keys, full_loss)
-        return sum(llk.values())
+        return tf.add_n(list(llk.values())) if llk else tf.constant(0.0)
 
     def update_active_losses(self, losses_config):
         """ Update the list of active losses based on a new configuration dictionary """
