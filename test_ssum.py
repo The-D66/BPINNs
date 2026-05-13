@@ -1,33 +1,38 @@
 import tensorflow as tf
+import numpy as np
 import time
-from src.networks.Theta import Theta
 
-# Create some dummy values
-values = [tf.random.normal((100, 100)) for _ in range(50)]
-theta = Theta(values)
+# Create a dummy Theta-like class for testing
+class DummyTheta:
+    def __init__(self, values):
+        self.values = values
 
-t0 = time.time()
-for _ in range(100):
-    _ = sum([tf.norm(t)**2 for t in theta.values])
-t1 = time.time()
+    def ssum_original(self):
+        return sum([tf.norm(t)**2 for t in self.values])
 
-t2 = time.time()
-for _ in range(100):
-    _ = sum([tf.reduce_sum(tf.square(t)) for t in theta.values])
-t3 = time.time()
+    def ssum_optimized(self):
+        if not self.values:
+            return tf.constant(0.0)
+        return tf.add_n([tf.reduce_sum(tf.square(t)) for t in self.values])
 
-t4 = time.time()
-for _ in range(100):
-    _ = sum([tf.reduce_sum(t**2) for t in theta.values])
-t5 = time.time()
+# Create list of tensors
+tf.random.set_seed(42)
+tensors = [tf.random.normal((100, 100)) for _ in range(50)]
+theta = DummyTheta(tensors)
 
+# Warmup
+theta.ssum_original()
+theta.ssum_optimized()
 
-t6 = time.time()
-for _ in range(100):
-    _ = tf.add_n([tf.reduce_sum(tf.square(t)) for t in theta.values])
-t7 = time.time()
+# Benchmark
+import timeit
 
-print(f"tf.norm(t)**2: {t1-t0:.4f} s")
-print(f"sum tf.reduce_sum(tf.square(t)): {t3-t2:.4f} s")
-print(f"sum tf.reduce_sum(t**2): {t5-t4:.4f} s")
-print(f"tf.add_n([tf.reduce_sum(tf.square(t))]): {t7-t6:.4f} s")
+def benchmark(func, name, n=1000):
+    start = time.time()
+    for _ in range(n):
+        func()
+    end = time.time()
+    print(f"{name}: {end - start:.4f} seconds")
+
+benchmark(theta.ssum_original, "Original sum() + tf.norm()**2")
+benchmark(theta.ssum_optimized, "Optimized tf.add_n() + tf.reduce_sum(tf.square())")
