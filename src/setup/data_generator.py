@@ -2,6 +2,7 @@ from utility import create_data_folders, starred_print
 import matplotlib.pyplot as plt
 from scipy.stats import qmc
 import numpy as np
+import math
 import warnings
 import os
 
@@ -92,7 +93,9 @@ class DataGenerator:
     def __create_multidomain(self, bnd, num, mesh=None):
         " Split multi-domain bnd and call single domain creator "
         if mesh is None: mesh = self.mesh["mesh_type"]
-        dim_dom   = [np.prod([d[1]-d[0] for d in d_bnd]) for d_bnd in bnd] 
+        # Bolt Optimization: Replaced np.prod with math.prod for simple bounds multiplication
+        # Reduces overhead by avoiding numpy array conversions for simple float multiplications
+        dim_dom   = [math.prod([d[1]-d[0] for d in d_bnd]) for d_bnd in bnd]
         num_dom   = [int((dd*num)//sum(dim_dom)) for dd in dim_dom]
         multi_pts = [self.__create_domain(d_bnd, d_num, mesh) for d_bnd, d_num in zip(bnd, num_dom)]
         pts, num = multi_pts[0], num_dom[0]
