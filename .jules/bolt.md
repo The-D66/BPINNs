@@ -1,0 +1,3 @@
+## 2024-05-15 - Optimizing Sums and Products in TF and Python
+**Learning:** Python's `sum()` combined with `tf.norm(t)**2` is highly inefficient and potentially unstable. `tf.add_n([tf.reduce_sum(tf.square(t))])` is native to TF, much faster, and safer for gradients. Additionally, using `np.prod` for small Python lists or tuples incurs significant overhead compared to Python's `math.prod`.
+**Action:** Replace `sum()` and `tf.norm(t)**2` with `tf.add_n` and `tf.reduce_sum(tf.square(t))` for TF tensors. Use `math.prod` instead of `np.prod` for native Python iterables with small element counts to avoid type-conversion overhead.
