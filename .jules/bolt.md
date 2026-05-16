@@ -1,0 +1,3 @@
+## 2024-05-16 - [Performance Optimization in Theta parameter handling]
+**Learning:** For neural network weight structures (like `Theta`), calculating squared sums with `tf.add_n([tf.reduce_sum(tf.square(t)) for t in values])` is significantly faster (~4x) than using Python's `sum([tf.norm(t)**2 for t in values])`. Furthermore, using `math.prod(t.shape)` to calculate the size of tensors is much faster (~9x) than using `np.prod(t.shape)` as it avoids NumPy type conversion overhead for small shape tuples.
+**Action:** Always prefer `tf.add_n` over Python `sum` when reducing lists of tensors, and use `math.prod` for small Python lists/tuples like shapes instead of `np.prod`.
