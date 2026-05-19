@@ -1,0 +1,3 @@
+## 2024-05-19 - [TensorFlow Norm vs Reduce Sum]
+**Learning:** In TensorFlow, computing the L2 norm inherently involves taking a square root. If the norm is immediately squared (e.g., `tf.norm(t)**2`), this involves an unnecessary square root operation that is subsequently squared, leading to computational overhead and potential numerical instability (undefined gradients near zero).
+**Action:** When computing the squared sum of elements in a tensor, use `tf.reduce_sum(tf.square(t))` instead of `tf.norm(t)**2` to avoid the square root operation and build a more efficient and numerically stable computational graph. Combine with `tf.add_n` when summing over lists of tensors.
