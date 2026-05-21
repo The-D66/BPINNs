@@ -1,0 +1,3 @@
+## 2024-05-24 - Efficient Tensor Operations in Theta Class
+**Learning:** `sum([tf.norm(t)**2 for t in tensors])` is extremely slow and generates an inefficient computation graph with undefined gradients near 0. `sum([np.prod(t.shape) for t in tensors])` is also slow because of the overhead of NumPy type conversion for small tuples.
+**Action:** Use `tf.add_n([tf.reduce_sum(tf.square(t)) for t in tensors])` with a fallback condition for empty lists to safely and quickly calculate the sum of squared norms. Use `math.prod(t.shape)` instead of `np.prod` for fast dimensional products on small tuples.
