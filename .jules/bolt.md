@@ -1,0 +1,3 @@
+## 2024-05-18 - [Optimize TensorFlow and Python mathematical aggregations]
+**Learning:** `tf.add_n([tf.reduce_sum(tf.square(t)) ...])` is significantly faster than using Python's `sum([tf.norm(t)**2 ...])` for list of tensors, as it leverages TensorFlow native accumulation. In addition, using the built-in `math.prod()` avoids NumPy conversion overhead compared to `np.prod()` for small structures like tensor shapes.
+**Action:** Always prefer `tf.add_n` over `sum` and `math.prod` over `np.prod` for small shapes or Python native aggregations, being mindful of fallbacks for empty iterables like `tf.constant(0.0)`.
