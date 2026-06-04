@@ -1,0 +1,3 @@
+## 2026-06-04 - [Optimize Dictionary Sums with tf.add_n]
+**Learning:** Using `tf.add_n` instead of Python's `sum()` to accumulate dynamic lists of tensors (like dynamically constructed loss components) provides significant speedups, but always requires a fallback condition (e.g. `if not list: return tf.constant(0.0, dtype=tf.float32)`) to prevent TensorFlow from crashing on empty lists.
+**Action:** Next time when summing dictionaries of tensors, I will use `tf.add_n(list(dictionary.values())) if dictionary else tf.constant(0.0, dtype=tf.float32)` to handle empty collections safely and efficiently.
