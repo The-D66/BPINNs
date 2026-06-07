@@ -31,7 +31,8 @@ class Operators:
     @staticmethod
     def tf_trace(lt):
         """ Computes the trace (in the algebrical sense), but for an input which is a list of column tensors """
-        return tf.expand_dims(sum([v[:,i] for i, v in enumerate(lt)]), axis=-1)
+        # Optimization: use tf.linalg.trace instead of list comprehension and sum() to avoid TF graph bloat
+        return tf.expand_dims(tf.linalg.trace(tf.stack(lt, axis=-1)), axis=-1)
 
     @staticmethod
     def gradient_scalar(tape, s, x):

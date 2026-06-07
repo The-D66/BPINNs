@@ -5,3 +5,7 @@
 ## 2024-05-24 - math.prod is faster than np.prod for small iterables
 **Learning:** When calculating the product of elements in small, simple iterables like `TensorShape` objects, `math.prod` combined with a generator expression avoids NumPy array conversion overhead and intermediate list instantiation.
 **Action:** Use `sum(math.prod(shape) for shape in shapes)` instead of `sum([np.prod(shape) for shape in shapes])`.
+
+## 2024-05-24 - Avoid Python sum() for tf.Tensor aggregation
+**Learning:** Using Python's built-in `sum()` to aggregate lists of `tf.Tensor` objects or dictionary values introduces significant overhead by instantiating intermediate objects and bloating the TensorFlow graph.
+**Action:** When aggregating dictionary values that are tensors, use `tf.add_n(list(dict.values())) if dict else tf.constant(0.0)`. For specific linear algebra operations like finding the trace of a Jacobian from a list of column tensors, use `tf.linalg.trace(tf.stack(lt, axis=-1))` rather than iterating and summing with `sum()`. These methods are much faster and avoid intermediate object creation overhead.
