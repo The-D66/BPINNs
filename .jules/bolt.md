@@ -5,3 +5,7 @@
 ## 2024-05-24 - math.prod is faster than np.prod for small iterables
 **Learning:** When calculating the product of elements in small, simple iterables like `TensorShape` objects, `math.prod` combined with a generator expression avoids NumPy array conversion overhead and intermediate list instantiation.
 **Action:** Use `sum(math.prod(shape) for shape in shapes)` instead of `sum([np.prod(shape) for shape in shapes])`.
+
+## 2024-06-12 - HMC leapfrog integration gradient caching
+**Learning:** In Hamiltonian Monte Carlo (HMC) leapfrog integration (`src/algorithms/HMC.py`), computing `grad_loss` twice per step is mathematically redundant because the gradient evaluated at the end of step `i` is identical to the gradient required at the beginning of step `i+1`. Original implementation blindly performed $2L$ expensive backpropagation gradient evaluations per sample.
+**Action:** Always verify if iterative integrators naturally evaluate identical quantities at boundaries. Cache the gradient calculated at the end of a leapfrog step and pass it as an argument to the beginning of the next step. This mathematically identical refactor reduces total gradient evaluations from $2L$ to $L+1$, yielding ~2x speedup for the integration loop.
