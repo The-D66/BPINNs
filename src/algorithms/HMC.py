@@ -25,14 +25,16 @@ class HMC(Algorithm):
         self.HMC_eta = param_method["HMC_eta"]
         self.selected = list()
 
-    def __leapfrog_step(self, old_theta, r, dt):
+    def __leapfrog_step(self, old_theta, r, dt, grad_theta):
         """ Performs one leap-frog step starting from previous values of theta/sigma and r/s """
-        grad_theta = self.model.grad_loss(self.data_batch, self.__full_loss)
+        # Re-use the previously calculated gradient (grad_theta)
+        # to halve gradient calculations per step
         r = r - grad_theta * dt / 2
         self.model.nn_params = old_theta + r * dt 
+        # Calculate new gradient at updated position for use in next step
         grad_theta = self.model.grad_loss(self.data_batch, self.__full_loss)
         r = r - grad_theta * dt / 2
-        return self.model.nn_params, r
+        return self.model.nn_params, r, grad_theta
 
     def __compute_alpha(self, h0, h1):
         """ Computation of acceptance probabilities alpha and sampling of p (logarithm of both quantities) """
@@ -90,8 +92,10 @@ class HMC(Algorithm):
         r_0 = theta_0.normal(self.HMC_eta) 
         r   = r_0.copy()
         theta = theta_0.copy()
+        self.model.nn_params = theta
+        grad_theta = self.model.grad_loss(self.data_batch, self.__full_loss)
         for _ in range(self.HMC_L):
-            theta, r = self.__leapfrog_step(theta, r, self.HMC_dt)
+            theta, r, grad_theta = self.__leapfrog_step(theta, r, self.HMC_dt, grad_theta)
         return self.__accept_reject((theta_0,theta), (r_0,r))
 
     def select_thetas(self, thetas_train):
