@@ -21,12 +21,12 @@ class Operators:
     @staticmethod
     def tf_unpack(tensor):
         """ Returns a list whose elements are the tensor representing the columns of the input tensor """
-        return tf.unstack(tf.expand_dims(tensor, axis=-2), axis=-1) 
+        return tf.split(tensor, tensor.shape[-1], axis=-1)
 
     @staticmethod
     def tf_pack(tensor_list):
         """ Returns a list whose elements are the tensor representing the columns of the input tensor """
-        return tf.squeeze(tf.stack(tensor_list, axis=-1), axis=-2)
+        return tf.concat(tensor_list, axis=-1)
 
     @staticmethod
     def tf_trace(lt):
