@@ -1,7 +1,3 @@
-## 2024-05-24 - tf.add_n + tf.reduce_sum(tf.square) is faster than tf.norm()**2
-**Learning:** In TensorFlow, `tf.add_n([tf.reduce_sum(tf.square(t)) for t in self.values])` is significantly faster (3.9x in benchmarks) than `sum([tf.norm(t)**2 for t in self.values])`. This is because it avoids Python's `sum()` intermediate graph bloat, and bypasses the unnecessary internal square root / squaring operations of `tf.norm()**2`, which can also cause gradient issues near zero.
-**Action:** Use `tf.add_n` when aggregating loss or norms across multiple tensors instead of Python's `sum`, and prefer `tf.reduce_sum(tf.square(x))` over `tf.norm(x)**2`. Provide a type-safe fallback like `tf.constant(0.0)` for `tf.add_n` when lists could be empty.
-
-## 2024-05-24 - math.prod is faster than np.prod for small iterables
-**Learning:** When calculating the product of elements in small, simple iterables like `TensorShape` objects, `math.prod` combined with a generator expression avoids NumPy array conversion overhead and intermediate list instantiation.
-**Action:** Use `sum(math.prod(shape) for shape in shapes)` instead of `sum([np.prod(shape) for shape in shapes])`.
+## 2024-07-04 - [Performance] Cache Leapfrog Gradients in HMC
+**Learning:** In Hamiltonian Monte Carlo (HMC) leapfrog integration, the gradient calculated at the end of leapfrog step $i$ is exactly the gradient needed at the beginning of step $i+1$. Recomputing this gradient via `self.model.grad_loss` is a redundant and expensive TensorFlow operation.
+**Action:** When implementing or maintaining HMC-style integrators, always pass the gradient evaluated at the end of the previous step as an argument to the next step. This design pattern reduces gradient evaluations from $2L$ to $L+1$ per sampling iteration, resulting in significant execution speedups (e.g. ~35% observed here).
