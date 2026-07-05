@@ -5,3 +5,7 @@
 ## 2024-05-24 - math.prod is faster than np.prod for small iterables
 **Learning:** When calculating the product of elements in small, simple iterables like `TensorShape` objects, `math.prod` combined with a generator expression avoids NumPy array conversion overhead and intermediate list instantiation.
 **Action:** Use `sum(math.prod(shape) for shape in shapes)` instead of `sum([np.prod(shape) for shape in shapes])`.
+
+## 2024-05-25 - tf.split vs tf.unstack(tf.expand_dims) for tensor unpacking
+**Learning:** When converting a tensor into a list of its component columns (e.g., shape `(..., D)` to a list of `D` tensors of shape `(..., 1)`), using `tf.split` along the last axis is significantly faster and cleaner than doing `tf.unstack(tf.expand_dims(tensor, axis=-2), axis=-1)`. The latter involves unnecessary graph dimension manipulation. Similarly, reconstructing the tensor with `tf.concat` is faster than `tf.squeeze(tf.stack(...))`.
+**Action:** Always prefer `tf.split` for slicing along an axis and `tf.concat` for joining, avoiding convoluted dimension expansions and squeezing operations where possible.
