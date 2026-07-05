@@ -21,17 +21,17 @@ class Operators:
     @staticmethod
     def tf_unpack(tensor):
         """ Returns a list whose elements are the tensor representing the columns of the input tensor """
-        return tf.unstack(tf.expand_dims(tensor, axis=-2), axis=-1) 
+        return tf.split(tensor, num_or_size_splits=tensor.shape[-1], axis=-1)
 
     @staticmethod
     def tf_pack(tensor_list):
         """ Returns a list whose elements are the tensor representing the columns of the input tensor """
-        return tf.squeeze(tf.stack(tensor_list, axis=-1), axis=-2)
+        return tf.concat(tensor_list, axis=-1)
 
     @staticmethod
     def tf_trace(lt):
         """ Computes the trace (in the algebrical sense), but for an input which is a list of column tensors """
-        return tf.expand_dims(sum([v[:,i] for i, v in enumerate(lt)]), axis=-1)
+        return tf.expand_dims(tf.add_n([v[:,i] for i, v in enumerate(lt)]), axis=-1)
 
     @staticmethod
     def gradient_scalar(tape, s, x):
