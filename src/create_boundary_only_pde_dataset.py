@@ -34,7 +34,13 @@ def create_boundary_pde_dataset_manual():
         u_hist = np.load(os.path.join(path_raw, "u_history.npy"))
         t_grid = np.load(os.path.join(path_raw, "t_grid.npy"))
         x_grid = np.load(os.path.join(path_raw, "x_grid.npy"))
-        config = np.load(os.path.join(path_raw, "config.npy"), allow_pickle=True).item()
+        config_path = os.path.join(path_raw, "config.json")
+        if os.path.exists(config_path):
+            import json
+            with open(config_path, "r") as f:
+                config = json.load(f)
+        else:
+            config = np.load(os.path.join(path_raw, "config.npy"), allow_pickle=True).item()
         
         T_warmup = config.get("T_warmup", 3600.0)
         start_idx = np.searchsorted(t_grid, T_warmup)

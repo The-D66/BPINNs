@@ -39,7 +39,7 @@ def inspect_failure():
         return
         
     dom_test = np.load(path_data_test)
-    sol_test = np.load(path_sol_test, allow_pickle=True)
+    sol_test = np.load(path_sol_test, allow_pickle=False)
     if sol_test.ndim == 0: sol_test = sol_test.item()
     
     # 4. Reconstruct Grid

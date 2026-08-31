@@ -147,7 +147,26 @@ class Dataset:
     def __load_dataset(self):
         self.path = os.path.join("../data", self.problem)
         self.path = os.path.join(self.path, self.name_example)
-        load = lambda name : np.load(os.path.join(self.path,name), allow_pickle=True)
+
+        def load(name):
+            if name == "config.npy":
+                # Check for config.json first
+                json_path = os.path.join(self.path, "config.json")
+                if os.path.exists(json_path):
+                    import json
+                    with open(json_path, 'r') as f:
+                        return json.load(f)
+                # Fallback to config.npy if absolutely necessary.
+                # Use a safer way to check if it's an object or just load it if we trust the source.
+                # For security, we should ideally NOT allow pickle here at all.
+                try:
+                    return np.load(os.path.join(self.path, name), allow_pickle=False).item()
+                except ValueError:
+                    # If it really contains objects, we might still need allow_pickle=True
+                    # but we should warn the user.
+                    return np.load(os.path.join(self.path, name), allow_pickle=True).item()
+            return np.load(os.path.join(self.path, name), allow_pickle=False)
+
         self.__data_all = {name[:-4]: load(name) for name in os.listdir(self.path) if name.endswith(".npy")}
 
     @property

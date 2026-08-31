@@ -49,13 +49,17 @@ def diagnose_error_artifact():
     bayes_nn.norm_coeff = dataset.norm_coeff
     
     # Load Weights
-    ckpt_path = f"../outs/SaintVenant1D/SaintVenant1D/{folder_name}/checkpoints/checkpoint_latest.npy"
+    ckpt_path = f"../outs/SaintVenant1D/SaintVenant1D/{folder_name}/checkpoints/checkpoint_latest.npz"
     if not os.path.exists(ckpt_path):
         print("Checkpoint not found, falling back to pretrained.")
-        ckpt_path = "../pretrained_models/pretrained_SaintVenant1D_simple_ADAM.npy"
+        ckpt_path = "../pretrained_models/pretrained_SaintVenant1D_simple_ADAM.npz"
     
     print(f"Loading weights from {ckpt_path}...")
-    loaded_values = np.load(ckpt_path, allow_pickle=True)
+    if ckpt_path.endswith('.npz'):
+        with np.load(ckpt_path, allow_pickle=False) as data:
+            loaded_values = [data[f'arr_{i}'] for i in range(len(data.files))]
+    else:
+        loaded_values = np.load(ckpt_path, allow_pickle=True)
     theta_values = [tf.convert_to_tensor(v, dtype=tf.float32) for v in loaded_values]
     bayes_nn.nn_params = Theta(theta_values)
     bayes_nn.thetas = [bayes_nn.nn_params]

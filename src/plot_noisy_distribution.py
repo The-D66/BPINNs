@@ -32,7 +32,12 @@ def plot_noisy_distribution_standalone(mode):
         u_history = np.load(os.path.join(path_raw, "u_history.npy"))
         t_grid = np.load(os.path.join(path_raw, "t_grid.npy"))
         x_grid = np.load(os.path.join(path_raw, "x_grid.npy"))
-        data_config = np.load(path_npy_config, allow_pickle=True).item()
+        path_json_config = path_npy_config.replace(".npy", ".json")
+        if os.path.exists(path_json_config):
+            with open(path_json_config, "r") as f:
+                data_config = json.load(f)
+        else:
+            data_config = np.load(path_npy_config, allow_pickle=True).item()
         
         with open(path_config, 'r') as f:
             json_config = json.load(f)

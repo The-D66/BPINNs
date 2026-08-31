@@ -98,7 +98,7 @@ def verify_pde():
     dom_test = np.load(path_data_test)
     # Load Ground Truth Solution (for norm coeffs)
     path_sol_test = path_data_test.replace("dom_test.npy", "sol_test.npy")
-    sol_test = np.load(path_sol_test, allow_pickle=True)
+    sol_test = np.load(path_sol_test, allow_pickle=False)
     if sol_test.ndim == 0: sol_test = sol_test.item()
     
     # Set Norm Coeffs based on Test Data

@@ -296,7 +296,7 @@ class Algorithm(ABC):
           ckpt_dir = os.path.join(base_path, "checkpoints")
           if not os.path.exists(ckpt_dir):
             os.makedirs(ckpt_dir)
-          ckpt_path = os.path.join(ckpt_dir, "checkpoint_latest.npy")
+          ckpt_path = os.path.join(ckpt_dir, "checkpoint_latest.npz")
           # Save nn_params values (list of numpy arrays)
           numpy_values = []
           for v in self.model.nn_params.values:
@@ -304,7 +304,7 @@ class Algorithm(ABC):
               numpy_values.append(v.numpy())
             else:
               numpy_values.append(np.array(v))
-          np.save(ckpt_path, np.array(numpy_values, dtype=object))
+          np.savez(ckpt_path, *numpy_values)
         except Exception as e:
           pass  # Ignore save errors during training loop to avoid stopping
 
@@ -363,7 +363,7 @@ class Algorithm(ABC):
             ckpt_dir = os.path.join(base_path, "checkpoints")
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
-            ckpt_path = os.path.join(ckpt_dir, "checkpoint_latest.npy")
+            ckpt_path = os.path.join(ckpt_dir, "checkpoint_latest.npz")
             
             numpy_values = []
             for v in self.model.nn_params.values:
@@ -371,7 +371,7 @@ class Algorithm(ABC):
                     numpy_values.append(v.numpy())
                 else:
                     numpy_values.append(np.array(v))
-            np.save(ckpt_path, np.array(numpy_values, dtype=object))
+            np.savez(ckpt_path, *numpy_values)
             print(f"Final checkpoint saved to: {ckpt_path}")
             
             # Also save to fixed path for easy resumption
@@ -379,8 +379,8 @@ class Algorithm(ABC):
                 fixed_dir = "../pretrained_models"
                 if not os.path.exists(fixed_dir):
                     os.makedirs(fixed_dir)
-                fixed_path = os.path.join(fixed_dir, f"checkpoint_latest_{self.data_config.problem}_{self.data_config.name}.npy")
-                np.save(fixed_path, np.array(numpy_values, dtype=object))
+                fixed_path = os.path.join(fixed_dir, f"checkpoint_latest_{self.data_config.problem}_{self.data_config.name}.npz")
+                np.savez(fixed_path, *numpy_values)
                 print(f"Final checkpoint also saved to: {fixed_path}")
                 
         except Exception as e:
